@@ -21,12 +21,44 @@ These are recorded results, not tests rerun for this documentation commit.
 Reproduction commands are in the README. The existing native verifier has no
 rendered-mode switch; adding a supported rendered host run is part of the next task.
 
+## Development host and production integration
+
+Use the existing `Python/UnrealHost/AnimationCaptureHost.uproject` as the shared
+suite's small UE development/sample host. It is a real UE 5.6 editor project with
+an Engine/plugin-only module. Extend this one host to serve both repeatable
+automation and interactive inspection. The current verifier materializes a temporary
+copy and removes it; a documented prepare/launch workflow for a retained, ignored
+development copy still needs implementation.
+
+| Test location | Responsibility |
+|---|---|
+| Portable Python tests | Known geometry, clocks, identities, file integrity, decoders and analysis without Unreal |
+| Shared Unreal host | Real renderer/viewport/world behavior, controlled RGB/depth/label truth, readback performance and lifecycle failures, independently of Katana |
+| KatanaCombat integration | Production animations, motion warping, paired interaction/death/interruption, telemetry and project adapter compatibility |
+
+Start the rendered host with the existing camera/primitive controls. As supported
+features expand, add small neutral skeletal/animation fixtures, moving props,
+occluders, multiple subjects and reproducible teardown/resize cases. Use the same
+fixture definitions for interactive inspection and automated capture so their
+expectations cannot diverge. Keep fixture source and necessary authored inputs
+tracked; build products, prepared host copies and capture output remain generated.
+Test fixture actors and expected layouts belong in host/test modules, outside the
+capture implementation. Add content only when it is needed to exercise a capability.
+
+Neutral controls provide known expected outcomes but cannot establish compatibility
+with every real game. Katana remains the production consumer check, owned by its
+developer under the integration process below. The shared developer can inspect
+its source and recorded evidence, then provide a candidate commit and requested
+integration scenarios. Performance runs on this workstation are scheduled to avoid
+simultaneous GPU workloads. There is no automatic update of Katana's live dependency.
+
 ## First delivery: neutral rendered controls, then asynchronous readback
 
 1. Establish a rendered D3D11 fixture in the neutral host using explicitly supplied
    primitives and engine content. Reuse the known-geometry controls described below.
-   Give it a reproducible launcher, deadlines, exact test-result checks and retained
-   evidence. A headless skip must remain distinguishable from a rendered pass.
+   Give it reproducible automation and interactive prepare/launch workflows,
+   deadlines, exact test-result checks and retained evidence. A headless skip must
+   remain distinguishable from a rendered pass.
 2. Record the current synchronous baseline in that host before changing acquisition.
    Keep existing lifecycle tests. Verify RGB/label/depth alignment independently of
    gameplay telemetry and preserve the control geometry, view policy and tolerances.
