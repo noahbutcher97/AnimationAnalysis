@@ -21,6 +21,7 @@ import zipfile
 
 
 LIFECYCLE_TESTS = (
+    "AnimationAnalysis.Capture.MeshReplay.PythonCanonicalTopology",
     "AnimationAnalysis.Capture.Portability.IndependentSessions",
     "AnimationAnalysis.Capture.Portability.ExtensionIntegrity",
     "AnimationAnalysis.Capture.Portability.ReadbackAdmission",
@@ -32,6 +33,7 @@ SURFACE_TESTS = (
     "AnimationAnalysis.Capture.Surfaces.RenderedGeometry",
 )
 RENDERED_TESTS = SURFACE_TESTS + (
+    "AnimationAnalysis.Capture.Mesh.Reference",
     "AnimationAnalysis.Capture.Rendered.ReadbackRGBBytes",
     "AnimationAnalysis.Capture.Rendered.ReadbackRGB10Bit",
     "AnimationAnalysis.Capture.Async.RenderedGeometry",
