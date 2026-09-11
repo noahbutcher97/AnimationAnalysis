@@ -4,6 +4,13 @@ Recorded 2026-09-11. This is a read-only requirements investigation of the acces
 first consumer, informing the broader [surface capability design](../SURFACE_CAPABILITIES.md).
 It does not implement capture, approve choreography, or change Katana assets or pins.
 
+Follow-up: [loaded-asset and animated readiness checks](2026-09-11-animated-surface-readiness.md)
+now narrow the asset unknowns listed in this original source-only assessment. They
+find no stored morph/clothing/deformer/post-process assignments in the selected
+meshes, but confirm masked materials, connected PDO and a used null material slot.
+Effective runtime coverage remains unverified. The original evidence scope below
+is preserved so source-only findings are not confused with the subsequent asset load.
+
 ## Evidence and freshness
 
 Katana HEAD was `50685e86dc2a284408f9f8fa6fbcedd37efed470`, branch

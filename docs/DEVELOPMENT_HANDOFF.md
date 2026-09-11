@@ -43,8 +43,19 @@ qualification criteria. Its [Katana assessment](research/2026-09-11-katana-surfa
 uses a hashed working-tree snapshot, including the owner's integration report for
 `3fd91eb`. This is documentation/source evidence; no consumer tests were rerun.
 Body/weapon surfaces, authored/live provenance and combined budgets are concrete
-needs. Active asset deformation and material coverage remain unverified and must be
-inventoried before claiming bone-only or cached geometry satisfies Katana.
+needs. The [focused readiness checks](research/2026-09-11-animated-surface-readiness.md)
+now load the selected assets: no stored morph/clothing/default-deformer/post-process
+assignments, but masked materials and connected pixel-depth offset. They also pass
+real-animation, rigid-attachment, delayed-readback and matching-raster probe controls,
+with a source-supported Skin Cache setup-ordering mitigation for UE 5.6.1.
+Runtime component/material overrides and complete production acceptance remain open.
+
+Proceed with the [mesh record/replay plan](superpowers/plans/2026-09-11-mesh-observation-records.md),
+then production CPU/rigid and bounded GPU sampling. No further broad research is
+required before the record slice. Production morph support is deferred unless a
+required selected surface needs it; retain a small early positive morph experiment.
+Cloth, graph and material-effect coverage require separate qualification. No new
+production mesh API, engine patch or consumer dependency update has been delivered.
 
 ## Development host and production integration
 

@@ -3,6 +3,8 @@
 Recorded 2026-09-11. This is the proposed production direction following the
 [skeletal feasibility experiment](research/2026-09-11-skeletal-surface-sampling.md)
 and [Katana requirements investigation](research/2026-09-11-katana-surface-requirements.md).
+The subsequent [animated readiness checks](research/2026-09-11-animated-surface-readiness.md)
+add loaded-asset findings, real animation/rigid-prop evidence and qualified task ordering.
 It defines requirements and qualification criteria; it does not announce new APIs
 or supported backends. Existing capture defaults and formats remain unchanged.
 
@@ -34,9 +36,9 @@ The **current evidence** column is deliberately narrower than the target product
 | Capability / use case | Observation required | Current evidence and next qualification |
 |---|---|---|
 | Motion, pose and explicit proxies | Caller-nominated points, transforms and clocks | Existing foundation; retain as a useful inexpensive option without surface claims. |
-| Rigid props and attachments | Resident triangles, section identity and acquisition transform | First mesh slice must include this for weapons, tools and handles. Existing sockets do not supply the prop's surface. |
-| Bone-deformed meshes | Effective weights, reference mapping, finalized pose, LOD and triangles | Neutral CPU reference and cached-GPU feasibility only. Production animation finalization, multiple sections and resource lifetime remain to qualify. |
-| Morphs and facial correctives | Effective deformed positions at the required stage; active state/provenance | Required first GPU extension control. Probe did not exercise morphs. A bone reference cannot serve as the expected final morph result. |
+| Rigid props and attachments | Resident triangles, section identity and acquisition transform | Neutral animated rigid-prop projection/depth now passes. Production enrollment, sections and invalidation remain open. Existing sockets do not supply the prop's surface. |
+| Bone-deformed meshes | Effective weights, reference mapping, finalized pose, LOD and triangles | Real single-node animation, CPU/cached-GPU agreement, two LODs and delayed source retirement pass in a probe. General pose ordering, multiple sections and bounded production lifetime remain open. |
+| Morphs and facial correctives | Effective deformed positions at the required stage; active state/provenance | Small early extension experiment; production support follows separately unless required by selected consumer surfaces. A bone reference cannot serve as the expected final morph result. |
 | Cloth and simulated clothing | Mapped render vertices after simulation/blending, simulation identity and section coverage | Planned qualification including mixed cloth/non-cloth sections and frozen/skipped updates; not a bone-only fallback. |
 | Control Rig, IK, post-process and physics blending | The pose actually consumed by skinning, plus any later deformation | Source-driven previews do not establish live parity. Qualify ordering with a real skeletal component; separately identify simulation-driven surface changes. |
 | Mesh Deformer / ML deformation | Actual graph output, mapping and output-generation identity | Cached deformer access was source-inspected only. Requires independent expected displacements and execution/lifetime controls. |
@@ -94,15 +96,15 @@ Deliver **capability-aware rigid and skeletal mesh observations**, with replayab
 positions/topology and an explicitly qualified renderer path. Keep CPU bone skinning
 as an independent reference and opt-in geometry capability. Use cached GPU geometry
 for the initial renderer-deformed path, subject to qualification; do not rename it
-"final surface". Add a controlled active-morph case during this first qualification
-so the contract is exercised beyond the bone-only reference. Cloth, deformer graphs
+"final surface". Keep a small active-morph experiment early, with production morph
+support deferred unless the selected consumer surfaces require it. Cloth, deformer graphs
 and material effects remain explicit extension work until their positive controls
 pass; the API must already represent them without silent degradation.
 
-Start implementation with shared capability inventory, versioned records and
-negative controls, then promote the neutral CPU/reference and GPU experiments into
-the existing host. A real skeletal-component animation fixture and rigid attachment
-are necessary before a production claim. Complete the consumer inventory described
+Start with the [record/replay implementation plan](superpowers/plans/2026-09-11-mesh-observation-records.md),
+then implement shared capability inventory and promote the neutral CPU/reference and
+GPU experiments into the existing host. The real skeletal-component/rigid-attachment
+probe now exists; production acceptance remains open. Complete the live consumer inventory described
 in the [Katana assessment](research/2026-09-11-katana-surface-requirements.md#required-consumer-qualification)
 before claiming that the qualified subset satisfies its actual needs. Any additional
 active required feature becomes qualification work, not an assumed exception.
@@ -118,11 +120,13 @@ active required feature becomes qualification work, not an assumed exception.
    including parallel evaluation, repeated finalization in one frame, skipped/stale
    poses and post-process/physics ordering where claimed. Do not force live pose,
    LOD or CPU-rendering state. Unsupported ordering must yield unknown coverage.
-3. **Deformation coverage:** bone and controlled active-morph positive cases have
-   independent expected positions; inactive versus unknown must differ. Detect
-   cache-unavailable/invalid-section conditions and capability changes. Exercise
-   cloth, graph and WPO exclusions with known active fixtures so an unsupported
-   result is deliberate, not an untested absence assumption.
+3. **Deformation coverage:** supported bone/rigid cases have independent expected
+   positions; inactive versus unknown must differ. Detect cache-unavailable/invalid-section
+   conditions and capability changes. Test unsupported-result handling and reject
+   uncertain feature detection as unknown. Comprehensive cloth, graph and material-effect
+   fixtures are deferred with those capabilities; do not imply their detection is
+   qualified through record-validation tests alone. Positive morph qualification is
+   required before offering morph coverage, rather than for the bone/rigid baseline.
 4. **Topology and provenance:** asset/LOD/skin-weight changes invalidate affected
    records and region mappings; validate index ranges, finite values and section
    completeness. Leader-pose and streaming cases either pass declared controls or
@@ -144,8 +148,10 @@ active required feature becomes qualification work, not an assumed exception.
    meanings. Version new mesh records/readers explicitly. Pass distribution isolation
    and native host verification; consumer owner builds and tests affected integration.
 
-These are proposed production acceptance criteria, not passed checks. The existing
-probe proves a narrower feasibility result and supplies reusable controls.
+These are production acceptance requirements, not a passed delivery checklist. The
+animated probe passes a narrower subset and supplies reusable controls. Its asset
+inventory supports deferring production morph support; runtime assignments and
+masked/PDO materials still preclude a complete Katana surface-coverage claim.
 
 ### Performance qualification
 
@@ -185,8 +191,9 @@ filter, and improved geometry does not confer artistic authority.
 
 Shared changes stay in AnimationAnalysis. Katana owns roles, assets, criteria,
 gameplay interpretation, pin updates and integration runs. No consumer code or assets
-changed during this requirements pass. Documentation checks are the applicable
-verification; previous runtime/performance evidence was not rerun. No images were
-generated or deleted. The source snapshot, collection/verification scripts and
+were edited. The original requirements pass used documentation/source checks and
+generated no images; its source snapshot, collection/verification scripts and
 hash manifest are retained in `Saved/SurfaceCapabilityReview-20260911/`; its verified
 archive is `Saved/SurfaceCapabilityReview-20260911-evidence.zip`.
+The later [readiness report](research/2026-09-11-animated-surface-readiness.md) separately
+records fresh prototype runtime/raster results, image retention and remaining limits.

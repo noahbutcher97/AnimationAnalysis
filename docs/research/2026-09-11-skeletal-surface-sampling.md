@@ -1,5 +1,10 @@
 # Skeletal surface sampling: source investigation and neutral experiment
 
+Follow-up evidence: [animated surface readiness](2026-09-11-animated-surface-readiness.md)
+adds a real animation sequence, rigid attachment, independent raster replay, source
+retirement and a loaded consumer asset inventory. This report retains the original
+poseable-fixture evidence and its narrower proof limits.
+
 Recorded 2026-09-11 against AnimationAnalysis `3fd91eb70be340db63778a697b12465ab895cd8a`
 and installed UE **5.6.1, CL 44394996**. This is a feasibility report, not a completed
 skeletal capture delivery or an adopted public contract. Prototype code is throwaway

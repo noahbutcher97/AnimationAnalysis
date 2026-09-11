@@ -45,10 +45,13 @@ and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its own
    The [capability and fidelity design](SURFACE_CAPABILITIES.md) now proposes the
    production slice and acceptance criteria, informed by the
    [Katana source assessment](research/2026-09-11-katana-surface-requirements.md).
-   Qualify rigid attachments, real skeletal finalization and renderer deformation;
-   preserve the CPU reference and explicit unsupported coverage. Katana's active
-   asset/deformation inventory remains a prerequisite to consumer adequacy claims.
-   Production implementation remains open.
+   The [animated readiness follow-up](research/2026-09-11-animated-surface-readiness.md)
+   adds real animation, rigid attachment, delayed geometry/raster controls and loaded
+   asset findings. Start the [record/replay slice](superpowers/plans/2026-09-11-mesh-observation-records.md),
+   then qualify production CPU/rigid and bounded GPU sampling. Preserve explicit
+   unsupported coverage and defer production morph/cloth/graph/material extensions
+   until their positive controls pass. Katana's effective live component inventory
+   remains a prerequisite to consumer adequacy claims. Production implementation is open.
 2. Explicit region/support and temporal surfaces; offline intersection/containment
    with supported topology/deformation limits, then separate depth/volume/swept work.
 3. Move remaining generic paired evaluation/preview calculations and offline stream,
