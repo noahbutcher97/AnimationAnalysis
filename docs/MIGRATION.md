@@ -11,6 +11,29 @@ owns the Unreal recorder, PNG writer and synchronous/asynchronous surface adapte
 owns neutral native tests. The old project paths below are compatibility or migration
 locations; shared implementations now have this repository as their source of truth.
 
+## Product direction and reference consumer
+
+The suite targets a broadly reusable, marketable product with robust surface
+observation and analysis. Plan for the most complete practical deformation coverage
+and let users explicitly select capabilities, fidelity and resource cost for their
+needs. Bone-skinned geometry is a useful candidate capability and correctness baseline;
+it does not define the product's final surface coverage.
+
+KatanaCombat is the accessible first consumer and a valuable reference project.
+Explore its actual assets, deformation features, workflows and analysis needs to
+ground requirements and test production usefulness. Combine those findings with a
+broader capability matrix and neutral controls. Katana's needs inform priorities;
+its current configuration does not bound the suite's supported use cases. Gameplay
+discovery, assets and project-specific assertions remain in consumer adapters.
+
+Capability selection must distinguish deformation coverage, spatial precision,
+sampling cadence, latency and resource budgets. Record requested and achieved
+coverage, including missing evidence and any explicitly accepted fallback. Lower
+cost must not silently weaken a requested result. Analysis acceptance criteria stay
+separate from acquisition fidelity; higher fidelity alone is not an artistic-quality
+or physical-contact verdict. Existing defaults remain compatible until an explicit
+API change is delivered and documented.
+
 ## Remaining order
 
 The first scoped readback delivery is documented in [delivery evidence](RENDERED_READBACK_DELIVERY.md)
@@ -18,8 +41,9 @@ and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its own
 
 1. Moving skeletal surface sampling through the shared contracts. The
    [source investigation and neutral experiment](research/2026-09-11-skeletal-surface-sampling.md)
-   recommend an explicit CPU bone-skinned baseline and a separate opt-in cached GPU
-   capability. The narrow experiment passed; production implementation remains open.
+   establish a CPU bone-skinned reference and a narrow cached GPU feasibility result.
+   Define broader coverage/fidelity options, informed by Katana's real needs, before
+   fixing the first production slice's acceptance criteria. Implementation remains open.
 2. Explicit region/support and temporal surfaces; offline intersection/containment
    with supported topology/deformation limits, then separate depth/volume/swept work.
 3. Move remaining generic paired evaluation/preview calculations and offline stream,

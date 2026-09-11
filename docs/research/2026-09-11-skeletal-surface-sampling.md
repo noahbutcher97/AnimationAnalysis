@@ -8,18 +8,28 @@ into the tracked host or plugin.
 
 ## Recommendation
 
-Start the implementation with **explicit CPU bone-skinned geometry**, using
-`GetCurrentRefToLocalMatrices` and `ComputeSkinnedPositions` for a declared, resident
-LOD. Keep immutable positions, component transform, topology identity, clock and
-pose provenance together. This gives the suite a renderer-independent geometry
-baseline for a deliberately limited deformation model.
+Product direction clarified after this experiment: target broadly reusable, robust
+surface analysis with explicit user choices for deformation coverage, fidelity and
+resource cost. Use Katana as an accessible reference project and first consumer to
+discover practical needs and validate usefulness, alongside a broader capability
+matrix. Its current asset/rendering configuration does not define the product's
+coverage. See [product direction](../MIGRATION.md#product-direction-and-reference-consumer).
 
-Add **cached GPU geometry as a separate, opt-in observation capability**, after
-its acquisition/lifetime contract is implemented and tested. The experiment proves
-that UE 5.6 D3D11 Skin Cache positions can be copied asynchronously and match the
+Use **explicit CPU bone-skinned geometry** as a correctness reference and a supported
+option where its deformation coverage is sufficient. The tested route uses
+`GetCurrentRefToLocalMatrices` and `ComputeSkinnedPositions` for a declared, resident
+LOD, keeping immutable positions, component transform, topology identity, clock and
+pose provenance together. Its successful experiment does not establish that bone-only
+sampling satisfies all surface-analysis requirements or the first consumer's needs.
+
+Treat **cached GPU geometry as a separate observation capability**, requiring a
+validated acquisition/lifetime contract. The experiment proves that UE 5.6 D3D11
+Skin Cache positions can be copied asynchronously and match the
 earlier CPU geometry through a subsequent pose change. It does not establish a
-general production capture path. Do not silently substitute CPU geometry when a
-caller requested GPU-deformed evidence: return unavailable, or a separately labelled
+general production capture path or complete final rendered-surface coverage. CPU
+versus GPU is an implementation choice, not a sufficient fidelity classification.
+Do not silently substitute CPU geometry when a caller requested GPU-deformed
+evidence: return unavailable, or a separately labelled
 CPU observation when explicitly requested.
 
 Neither path establishes contact, penetration, containment or artistic quality.
@@ -154,11 +164,15 @@ raster bundle, with these explicit fields and failure distinctions:
    Carry resource ownership through delayed completion and retirement; audit the
    combined RGB/depth/mesh budget rather than duplicating its allowance.
 
-The next production work should establish this contract and CPU baseline with real
-skeletal-component finalization controls first. Then add renderer acquisition and
-the full delayed lifecycle/budget matrix. Reuse neutral geometry expectations when
-promoting a fixture into the maintained host. Katana's developer continues to own
-consumer adapters, assets, dependency pins and production integration tests.
+Before fixing the first production slice, define the broader capability/fidelity
+matrix and investigate Katana's actual deformation features and analysis workflows.
+Distinguish what users request from what each backend can establish, then select
+acceptance criteria for a useful supported slice. Preserve CPU geometry as a
+correctness baseline; add real skeletal-component finalization controls, renderer
+acquisition and the full delayed lifecycle/budget matrix as required by that slice.
+Reuse neutral geometry expectations when promoting a fixture into the maintained
+host. Katana's developer continues to own consumer adapters, assets, dependency
+pins and production integration tests.
 
 ## Reproduction, retention and compatibility
 

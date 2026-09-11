@@ -31,6 +31,12 @@ measurements, retained replay evidence and the remaining contract/lifetime work.
 Its prototype is research evidence only; no production skeletal API or consumer
 dependency change has been delivered.
 
+Product direction is recorded in [migration and reference-consumer guidance](MIGRATION.md#product-direction-and-reference-consumer).
+Target broad, robust capabilities with explicit user choices for fidelity and cost.
+Use Katana's accessible workflows and assets to inform requirements and first-consumer
+validation, alongside broader capability coverage and neutral fixtures. The bone-only
+experiment is a baseline, not evidence that the product's surface requirements are met.
+
 ## Development host and production integration
 
 Use the existing `Python/UnrealHost/AnimationCaptureHost.uproject` as the shared
