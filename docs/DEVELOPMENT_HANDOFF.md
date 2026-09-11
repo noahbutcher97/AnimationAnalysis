@@ -37,6 +37,15 @@ Use Katana's accessible workflows and assets to inform requirements and first-co
 validation, alongside broader capability coverage and neutral fixtures. The bone-only
 experiment is a baseline, not evidence that the product's surface requirements are met.
 
+The [surface capability design](SURFACE_CAPABILITIES.md) now records the broader
+coverage matrix, independent user choices, proposed first production slice and
+qualification criteria. Its [Katana assessment](research/2026-09-11-katana-surface-requirements.md)
+uses a hashed working-tree snapshot, including the owner's integration report for
+`3fd91eb`. This is documentation/source evidence; no consumer tests were rerun.
+Body/weapon surfaces, authored/live provenance and combined budgets are concrete
+needs. Active asset deformation and material coverage remain unverified and must be
+inventoried before claiming bone-only or cached geometry satisfies Katana.
+
 ## Development host and production integration
 
 Use the existing `Python/UnrealHost/AnimationCaptureHost.uproject` as the shared

@@ -42,8 +42,13 @@ and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its own
 1. Moving skeletal surface sampling through the shared contracts. The
    [source investigation and neutral experiment](research/2026-09-11-skeletal-surface-sampling.md)
    establish a CPU bone-skinned reference and a narrow cached GPU feasibility result.
-   Define broader coverage/fidelity options, informed by Katana's real needs, before
-   fixing the first production slice's acceptance criteria. Implementation remains open.
+   The [capability and fidelity design](SURFACE_CAPABILITIES.md) now proposes the
+   production slice and acceptance criteria, informed by the
+   [Katana source assessment](research/2026-09-11-katana-surface-requirements.md).
+   Qualify rigid attachments, real skeletal finalization and renderer deformation;
+   preserve the CPU reference and explicit unsupported coverage. Katana's active
+   asset/deformation inventory remains a prerequisite to consumer adequacy claims.
+   Production implementation remains open.
 2. Explicit region/support and temporal surfaces; offline intersection/containment
    with supported topology/deformation limits, then separate depth/volume/swept work.
 3. Move remaining generic paired evaluation/preview calculations and offline stream,

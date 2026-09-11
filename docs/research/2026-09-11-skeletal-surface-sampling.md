@@ -15,6 +15,11 @@ discover practical needs and validate usefulness, alongside a broader capability
 matrix. Its current asset/rendering configuration does not define the product's
 coverage. See [product direction](../MIGRATION.md#product-direction-and-reference-consumer).
 
+The subsequent [capability design](../SURFACE_CAPABILITIES.md) and
+[Katana requirements assessment](2026-09-11-katana-surface-requirements.md) now
+provide that matrix and a proposed production slice. They do not extend this
+experiment's proof or establish active consumer deformation coverage.
+
 Use **explicit CPU bone-skinned geometry** as a correctness reference and a supported
 option where its deformation coverage is sufficient. The tested route uses
 `GetCurrentRefToLocalMatrices` and `ComputeSkinnedPositions` for a declared, resident
@@ -28,7 +33,7 @@ Skin Cache positions can be copied asynchronously and match the
 earlier CPU geometry through a subsequent pose change. It does not establish a
 general production capture path or complete final rendered-surface coverage. CPU
 versus GPU is an implementation choice, not a sufficient fidelity classification.
-Do not silently substitute CPU geometry when a caller requested GPU-deformed
+Do not silently substitute bone-only geometry when a caller requested renderer-deformed
 evidence: return unavailable, or a separately labelled
 CPU observation when explicitly requested.
 
@@ -164,10 +169,10 @@ raster bundle, with these explicit fields and failure distinctions:
    Carry resource ownership through delayed completion and retirement; audit the
    combined RGB/depth/mesh budget rather than duplicating its allowance.
 
-Before fixing the first production slice, define the broader capability/fidelity
-matrix and investigate Katana's actual deformation features and analysis workflows.
-Distinguish what users request from what each backend can establish, then select
-acceptance criteria for a useful supported slice. Preserve CPU geometry as a
+The follow-up capability design supplies a proposed slice and acceptance criteria;
+the Katana source assessment identifies useful workflows but leaves active asset
+deformation coverage unverified. Complete that inventory before consumer adequacy
+claims. Distinguish what users request from what each backend can establish. Preserve CPU geometry as a
 correctness baseline; add real skeletal-component finalization controls, renderer
 acquisition and the full delayed lifecycle/budget matrix as required by that slice.
 Reuse neutral geometry expectations when promoting a fixture into the maintained
