@@ -7,27 +7,28 @@ no local AI setup or private workflow definitions to interpret them.
 
 Current layout: `Python/src/animation_analysis` owns portable contracts, geometry,
 raster/pixel review, integrity, identities, metrics and temporal services. `Source/AnimationCapture`
-owns the Unreal recorder, PNG writer and diagnostic surface adapter. `Python/UnrealHost`
+owns the Unreal recorder, PNG writer and synchronous/asynchronous surface adapters. `Python/UnrealHost`
 owns neutral native tests. The old project paths below are compatibility or migration
 locations; shared implementations now have this repository as their source of truth.
 
 ## Remaining order
 
-1. Bounded asynchronous readback: acquisition/completion identity, queue/byte bounds,
-   cancellation and teardown; capture-on/off performance and delayed-completion tests.
-2. Moving skeletal surface sampling through the shared contracts.
-3. Explicit region/support and temporal surfaces; offline intersection/containment
+The first scoped readback delivery is documented in [delivery evidence](RENDERED_READBACK_DELIVERY.md)
+and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its owner.
+
+1. Moving skeletal surface sampling through the shared contracts.
+2. Explicit region/support and temporal surfaces; offline intersection/containment
    with supported topology/deformation limits, then separate depth/volume/swept work.
-4. Move remaining generic paired evaluation/preview calculations and offline stream,
+3. Move remaining generic paired evaluation/preview calculations and offline stream,
    report, launcher and retention mechanisms out of consumer implementations.
-5. Keep Katana finisher/counter integrations and a neutral host exercising the same APIs.
+4. Keep Katana finisher/counter integrations and a neutral host exercising the same APIs.
 
 ## Whole-suite inventory carried from the consumer
 
 | Existing family | Current coupling or boundary | Required disposition |
 |---|---|---|
 | `CombatCaptureSession.h/.cpp`, `CombatCaptureCommands.cpp` | Project adapter delegates lifetime/engine observation to `FAnimationCaptureSession`; discovery, humanoid defaults, combat/warp fields and telemetry switch ownership remain in Katana | Preserve compatibility while further normalizing streams and extension contracts; migrate remaining paired consumers separately |
-| `AnimationCaptureImageWriter`, `ViewportSurfaceCapture`, old compatibility headers | Implementations compile in the independent `AnimationCapture` plugin module; original headers delegate without duplicate implementations | Keep verified lifecycle/identity semantics while adding bounded asynchronous readback and moving-surface capture |
+| `AnimationCaptureImageWriter`, `ViewportSurfaceCapture`, old compatibility headers | Independent plugin implementations; opt-in `ViewportAsyncCapture` and session RGB now share bounded readback | Consumer owner adopts async APIs explicitly; preserve synchronous compatibility and defer moving-surface capture |
 | `Tools/CombatCapture/analyze_capture.py` | Strict input/PNG integrity, summaries/deltas and atomic publication delegate to the portable package; legacy stream decoding, motion metrics and combat report layout remain here | Move remaining reusable stream analysis/presentation behind explicit records and supplied context |
 | `evaluate_capture.py`, `summarize_runs.py`, `capture_format.py` | Shared identity, status and clock/interval services are portable; file selection and simulation-field translation are in the format adapter; gameplay checks and reference criteria remain project-side | Continue separating reusable evaluation/report assembly from combat assertions, experiment validation and reference selection |
 | `run_scenario.py`, `evaluate_pair.py` | Process handling and identity collection assume the checkout layout, editor target, project file, DLL names, automation namespace and engine install default | Separate reusable execution/evidence services from an explicit project launch/identity descriptor and Katana entry points |

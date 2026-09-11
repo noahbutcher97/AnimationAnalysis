@@ -22,30 +22,30 @@
 
 Files: `Python/UnrealHost/Source/AnimationCaptureHost/Private/AnimationCaptureHostFixture.*`, `AnimationCaptureHostSurfaceTests.cpp`, host module/build configuration, `Python/verify_unreal_host.py`, host tooling tests, `docs/HOST_WORKFLOW.md`.
 
-- [ ] Add exact-result/deadline/retention tooling tests and observe the missing workflow fail.
-- [ ] Stage one neutral host for temporary automation or retained interactive use. Retain source identity, commands and unsuccessful results.
-- [ ] Share camera/cube controls between automation and `AnimationAnalysis.Host.Inspect`; restore labels/view/CVars on stop or teardown.
-- [ ] Verify five synchronous geometry cases, 350 cm front depth, fixed RGB silhouette IoU >= 0.99, occlusion and viewport/frame mismatch.
-- [ ] Warm the identical 640x480 fixture and retain repeated disabled/synchronous frame and readback timing samples, excluding file export from readback timing.
-- [ ] Build/run isolated host and package/tooling checks, record environment/hashes and commit verified host slice.
+- [x] Add exact-result/deadline/retention tooling tests and observe the missing workflow fail.
+- [x] Stage one neutral host for temporary automation or retained interactive use. Retain source identity, commands and unsuccessful results.
+- [x] Share camera/cube controls between automation and `AnimationAnalysis.Host.Inspect`; restore labels/view/CVars on stop or teardown.
+- [x] Verify five synchronous geometry cases, 350 cm front depth, fixed RGB silhouette IoU >= 0.99, occlusion and viewport/frame mismatch.
+- [x] Warm the identical 640x480 fixture and retain repeated disabled/synchronous frame and readback timing samples, excluding file export from readback timing.
+- [x] Build/run isolated host and package/tooling checks, record environment/hashes and commit verified host slice.
 
 ## Slice 2: bounded asynchronous producer and compatibility
 
 Files: new `Source/AnimationCapture/Public/AnimationCapture/AnimationCaptureReadback.h`, private implementation, existing surface/session APIs, host async tests, explicit Python adapter/reader tests if required.
 
-- [ ] Add controls that fail for missing async admission, delayed completion identity, queue/bytes saturation, cancellation and timeouts.
-- [ ] Implement admission with immutable caller context and renderer-acquired frame/projection, nonblocking fence polling and bounded result ownership.
-- [ ] Share staging/decode with surface RGB/depth and session RGB, retaining explicit synchronous compatibility settings.
-- [ ] Test missing draw/planes, resize/replacement, destroyed subject/world, repeated lifetime, independent owners and label restoration.
-- [ ] Record queue peaks, rejects/cancellations/failures and teardown waits; verify no steady-state GPU-idle wait or flush.
-- [ ] Build/run neutral rendered and portable isolation controls and commit the verified producer slice.
+- [x] Add controls that fail for missing async admission, delayed completion identity, queue/bytes saturation, cancellation and timeouts.
+- [x] Implement admission with immutable caller context and renderer-acquired frame/projection, nonblocking fence polling and bounded result ownership.
+- [x] Share staging/decode with surface RGB/depth and session RGB, retaining explicit synchronous compatibility settings.
+- [x] Test missing draw/planes, resize/replacement, destroyed subject/world, repeated lifetime, independent owners and label restoration.
+- [x] Record queue peaks, rejects/cancellations/failures and teardown waits; verify no steady-state GPU-idle wait or flush.
+- [x] Build/run neutral rendered and portable isolation controls and commit the verified producer slice.
 
 ## Slice 3: comparison and delivery
 
 Files: host performance controls, evidence summarizer, README/migration/handoff and delivery report.
 
-- [ ] Repeat disabled/synchronous/asynchronous measurements under the same warmed fixture, cadence and output policy; retain raw samples.
-- [ ] Report frame p50/p95/p99, submission/decode and completion latency, occupancy/bytes/losses, rendering versus encoding, and measured explicit teardown waits.
-- [ ] Verify archive inventory hashes and replay before cleaning inventoried PNGs.
-- [ ] Record exact candidate commits, commands, environment, evidence hashes, compatibility and limits. Supply Katana owner the pin/rebuild/scenario checklist without editing Katana.
-- [ ] Review diff, rerun checks justified by final changes, commit documentation and leave clean source state.
+- [x] Repeat disabled/synchronous/asynchronous measurements under the same warmed fixture, cadence and output policy; retain raw samples.
+- [x] Report frame p50/p95/p99, submission/decode and completion latency, occupancy/bytes/losses, rendering versus encoding, and measured explicit teardown waits.
+- [x] Verify archive inventory hashes and replay before cleaning inventoried PNGs.
+- [x] Record exact candidate commits, commands, environment, evidence hashes, compatibility and limits. Supply Katana owner the pin/rebuild/scenario checklist without editing Katana.
+- [x] Review diff, rerun checks justified by final changes, commit documentation and leave clean source state.

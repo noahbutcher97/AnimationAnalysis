@@ -2,13 +2,16 @@
 
 Recorded 2026-09-11. Read [repository instructions](../AGENTS.md), the
 [API and verification guide](../README.md), then [whole-suite migration](MIGRATION.md).
-This document defines the next bounded delivery and the consumer integration boundary.
+This document records the accepted first-delivery scope and consumer integration
+boundary. Current implementation, commands and results are in
+[delivery evidence](RENDERED_READBACK_DELIVERY.md), [host workflow](HOST_WORKFLOW.md)
+and [asynchronous API compatibility](ASYNC_READBACK.md).
 
 ## Verified starting point
 
 Implementation baseline: `ba13149d3318f80d3098958cd1d2cd52bba3e5d1`.
-KatanaCombat consumes that exact revision through its dependency lock. Later
-documentation commits do not change the consumer pin or its installed code.
+At extraction, KatanaCombat consumed that exact revision through its dependency
+lock. Shared-suite delivery does not update the consumer pin or its installed code.
 
 | Surface | Evidence at extraction | Limit |
 |---|---|---|
@@ -18,17 +21,18 @@ documentation commits do not change the consumer pin or its installed code.
 | Rendered Katana controls | Four D3D11 PIE/surface tests plus a completed finisher capture and offline evaluation pass | Existing synchronous capture; no continuous skeletal surface or penetration claim |
 
 These are recorded results, not tests rerun for this documentation commit.
-Reproduction commands are in the README. The existing native verifier has no
-rendered-mode switch; adding a supported rendered host run is part of the next task.
+Reproduction commands are in the README. The original verifier used NullRHI only;
+the first delivery adds `--rendered`, retained prepare/launch, and explicit readback
+performance controls. Consult the delivery report for the new standalone results.
 
 ## Development host and production integration
 
 Use the existing `Python/UnrealHost/AnimationCaptureHost.uproject` as the shared
 suite's small UE development/sample host. It is a real UE 5.6 editor project with
 an Engine/plugin-only module. Extend this one host to serve both repeatable
-automation and interactive inspection. The current verifier materializes a temporary
-copy and removes it; a documented prepare/launch workflow for a retained, ignored
-development copy still needs implementation.
+automation and interactive inspection. The verifier supports temporary isolated
+copies and a retained, ignored `--prepare`/`--launch` workflow. Both use one source
+allowlist and the same fixture definitions; see the host workflow.
 
 | Test location | Responsibility |
 |---|---|
@@ -68,13 +72,17 @@ simultaneous GPU workloads. There is no automatic update of Katana's live depend
    scenarios and quality criteria in consumers. Deliver this scope before moving
    skeletal sampling or geometric penetration work.
 
-Current implementation entry points:
+Implementation entry points:
 
 - `Source/AnimationCapture/Private/ViewportSurfaceCapture.cpp`: `ReadDepth` creates a
   GPU readback, blocks until GPU idle and immediately locks it. `Collect` also takes
   a synchronous RGB screenshot. Destruction currently flushes rendering commands.
-- `Source/AnimationCapture/Private/AnimationCaptureSession.cpp`: `PostDraw` acquires
-  RGB synchronously; PNG encoding uses the bounded `AnimationCaptureImageWriter`.
+- `Source/AnimationCapture/Private/AnimationCaptureReadback.cpp` and
+  `ViewportAsyncCapture.cpp`: bounded reusable producer, renderer witnesses,
+  fixed-buffer RGB/depth packing, nonblocking polling and explicit teardown drain.
+- `Source/AnimationCapture/Private/AnimationCaptureSession.cpp`: `Draw` preserves
+  synchronous RGB by default and supports explicit async opt-in; PNG encoding uses
+  the bounded `AnimationCaptureImageWriter` with a combined pipeline reservation.
 - `Python/UnrealHost/Source/AnimationCaptureHost/Private/AnimationCaptureHostTests.cpp`
   and `Python/verify_unreal_host.py`: independent lifecycle controls and launcher.
 - Public capture types, Python producer adapters and evidence readers are consumers
@@ -115,10 +123,11 @@ Current implementation entry points:
 
 ## Rendered controls and supported baseline
 
-Current supported surface path: UE 5.6, D3D11 D32F/S8, one perspective view, no AA
+Supported surface paths: UE 5.6, D3D11 D32F/S8, one perspective view, no AA
 and declared full-resolution diagnostic rendering. Physical staging layout is
 decoded explicitly; the existing five-byte logical format size is not its eight-byte
-staging stride. Preserve rejection of unsupported formats/views. Broader renderer
+staging stride in the synchronous path. The asynchronous path packs fixed GPU
+buffers and has its own decoder identity. Preserve rejection of unsupported formats/views. Broader renderer
 support is a separate validated capability.
 
 The existing fixture uses engine cubes and checks a front plane at 350 cm, separated,

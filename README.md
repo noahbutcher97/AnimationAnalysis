@@ -6,18 +6,20 @@ Unreal host under `Python/UnrealHost`. Game-specific discovery, profiles, scenar
 and gameplay assertions belong in consuming projects.
 
 The foundation is independently buildable. The broader suite is still migrating;
-see [remaining ownership and work](docs/MIGRATION.md). Async GPU readback, moving
-skeletal surface sampling and mesh penetration are not implemented yet.
+see [remaining ownership and work](docs/MIGRATION.md). Bounded asynchronous RGB/depth
+readback is available as an explicit opt-in. Moving skeletal surface sampling and
+mesh penetration remain outside the implemented scope.
 
-Start the next implementation with the [development handoff](docs/DEVELOPMENT_HANDOFF.md):
-verified baseline, neutral rendered controls, asynchronous readback acceptance and
-consumer integration ownership.
+Read the [delivery evidence](docs/RENDERED_READBACK_DELIVERY.md),
+[asynchronous API and compatibility](docs/ASYNC_READBACK.md), and
+[development handoff](docs/DEVELOPMENT_HANDOFF.md) for verification and consumer ownership.
 
 ## Verification
 
 ```powershell
 python Python/verify_distribution.py --output Saved/PythonVerification
 python Python/verify_unreal_host.py --engine "C:/Program Files/Epic Games/UE_5.6" --output Saved/NativeVerification
+python Python/verify_unreal_host.py --engine "C:/Program Files/Epic Games/UE_5.6" --output Saved/RenderedVerification --rendered
 ```
 
 These commands retain evidence and remove their validated temporary environments.
@@ -80,13 +82,17 @@ combat CSVs or assume a specific offline evaluator. Further normalized stream an
 analysis contracts remain part of the suite migration.
 
 `FAnimationCaptureImageWriter` bounds background PNG encoding by pending frames
-and bytes. Its pixel acquisition is still synchronous. `FViewportSurfaceCapture`
-and `FScopedSurfaceCaptureLabels` supply the existing diagnostic surface path;
-label ownership/restoration and requested viewport/frame checks remain intact.
-The tested surface backend is D3D11 with the declared full-resolution/no-AA
-diagnostic view policy. Surface depth readback still waits for the GPU. This
-extraction adds no performance improvement, continuous skeletal surface sampling,
-contact verdict or mesh penetration capability.
+and bytes. Session RGB uses synchronous acquisition by default; set
+`Settings.bUseAsyncReadback=true` for bounded asynchronous acquisition. Full-resolution
+diagnostic rendering requires a separate explicit opt-in. `FViewportAsyncCapture`
+uses the same producer for combined RGB/depth/label observations. Its delayed
+results preserve acquisition identity and report completion separately.
+
+`FViewportSurfaceCapture` retains its synchronous compatibility behavior and
+`FScopedSurfaceCaptureLabels` owns label restoration. The supported asynchronous
+backend is D3D11 with the declared full-resolution/no-AA view policy. Unsupported
+evidence remains unknown. Neither path supplies a physical contact, artistic quality
+or mesh penetration verdict. See [bounds and teardown policy](docs/ASYNC_READBACK.md).
 
 Verify a copied plugin in a minimal host outside this checkout:
 
@@ -95,7 +101,10 @@ python Python/verify_unreal_host.py --engine "C:/Program Files/Epic Games/UE_5.6
 ```
 
 The verifier stages plugin/host source, builds and runs native controls, preserves
-small observations/logs and removes its temporary host. The host runs
-`AnimationAnalysis.Capture.Portability.*`, with no gameplay modules or project assets.
+observations/logs and verified replay archives, then removes its temporary host.
+NullRHI runs five portability controls; `--rendered` runs all sixteen default controls,
+including geometry, delayed readback, lifecycle, independent sessions and console
+inspection. [Prepare/launch instructions](docs/HOST_WORKFLOW.md) use the same fixtures
+in a retained interactive host, with no gameplay modules or project assets.
 Katana's compatibility session, discovery, default points, telemetry switches,
 combat/warp observations and console commands remain in `KatanaCombatEditor`.

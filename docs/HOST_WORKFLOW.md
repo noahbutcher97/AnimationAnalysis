@@ -22,8 +22,8 @@ policy. Run rendered checks when other editor/GPU workloads are idle.
 
 | Mode | Exact expected automation results |
 | --- | --- |
-| NullRHI | `AnimationAnalysis.Capture.Portability.IndependentSessions`, `AnimationAnalysis.Capture.Portability.ExtensionIntegrity` |
-| Rendered | Both lifecycle results, `AnimationAnalysis.Capture.Surfaces.LabelOwnership`, `AnimationAnalysis.Capture.Surfaces.RenderedGeometry` |
+| NullRHI | Five `AnimationAnalysis.Capture.Portability` controls: `IndependentSessions`, `ExtensionIntegrity`, `ReadbackAdmission`, `ReadbackByteLimit`, `ReadbackTimeout` |
+| Rendered | All five above, two `Surfaces` controls, two `Rendered` RGB decoder controls, six `Async` geometry/lifecycle/session controls, and `Host.InteractiveCommands` (sixteen total) |
 
 Every expected test must complete exactly once with `Success`. Missing, duplicate,
 unexpected or failed results fail verification. A rendered run also needs an
@@ -37,6 +37,7 @@ names; it is not a prefix filter. Performance controls are deliberately explicit
 
 ```powershell
 python Python/verify_unreal_host.py --engine "C:/Program Files/Epic Games/UE_5.6" --output Saved/HostChecks/performance-01 --rendered --test AnimationAnalysis.Capture.Surfaces.Performance
+python Python/verify_unreal_host.py --engine "C:/Program Files/Epic Games/UE_5.6" --output Saved/HostChecks/comparison-01 --rendered --test AnimationAnalysis.Capture.Performance.ReadbackComparison
 ```
 
 Use the same option for additional implemented controls. Selecting a test does
@@ -45,6 +46,13 @@ not imply that other capabilities were verified. `--build-timeout` defaults to
 process tree and retains the command, deadline, elapsed time, exit/cleanup result
 and logs. If tree cleanup or replay retention cannot be confirmed, the temporary
 host is preserved for recovery and verification fails.
+
+The comparison rotates disabled/synchronous/asynchronous order over three repetitions,
+each with 60 warmup draws and 120 measured attempts. All modes use the same full-resolution
+policy and one attempt per draw; encoding/export is outside the timed window.
+Summarize the retained `observations/Performance-*/performance.json` with
+`python Python/summarize_readback_performance.py <performance.json> --output <summary.json>`.
+Losses or view/cadence differences invalidate a timing comparison; inspect raw results.
 
 ## Retained development and interactive inspection
 
