@@ -1,3 +1,10 @@
 #include "Modules/ModuleManager.h"
+#include "AnimationCaptureHostFixture.h"
 
-IMPLEMENT_MODULE(FDefaultModuleImpl, AnimationCaptureHost)
+class FAnimationCaptureHostModule : public IModuleInterface
+{
+public:
+	void StartupModule() override { RegisterAnimationCaptureHostCommands(); }
+	void ShutdownModule() override { UnregisterAnimationCaptureHostCommands(); }
+};
+IMPLEMENT_MODULE(FAnimationCaptureHostModule, AnimationCaptureHost)

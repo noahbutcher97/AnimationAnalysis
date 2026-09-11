@@ -6,6 +6,6 @@ public class AnimationCaptureHost : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         bUseUnity = false;
-        PrivateDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", "Json", "AnimationCapture" });
+        PrivateDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", "Json", "AnimationCapture", "UnrealEd", "Slate", "SlateCore", "RHI", "RenderCore" });
     }
 }
