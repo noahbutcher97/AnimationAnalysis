@@ -16,7 +16,10 @@ locations; shared implementations now have this repository as their source of tr
 The first scoped readback delivery is documented in [delivery evidence](RENDERED_READBACK_DELIVERY.md)
 and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its owner.
 
-1. Moving skeletal surface sampling through the shared contracts.
+1. Moving skeletal surface sampling through the shared contracts. The
+   [source investigation and neutral experiment](research/2026-09-11-skeletal-surface-sampling.md)
+   recommend an explicit CPU bone-skinned baseline and a separate opt-in cached GPU
+   capability. The narrow experiment passed; production implementation remains open.
 2. Explicit region/support and temporal surfaces; offline intersection/containment
    with supported topology/deformation limits, then separate depth/volume/swept work.
 3. Move remaining generic paired evaluation/preview calculations and offline stream,

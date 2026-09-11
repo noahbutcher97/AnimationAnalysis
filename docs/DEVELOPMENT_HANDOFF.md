@@ -25,6 +25,12 @@ Reproduction commands are in the README. The original verifier used NullRHI only
 the first delivery adds `--rendered`, retained prepare/launch, and explicit readback
 performance controls. Consult the delivery report for the new standalone results.
 
+The next delivery now has a [skeletal sampling research report](research/2026-09-11-skeletal-surface-sampling.md).
+It records UE 5.6 source findings, a neutral CPU/GPU geometry experiment, repeated
+measurements, retained replay evidence and the remaining contract/lifetime work.
+Its prototype is research evidence only; no production skeletal API or consumer
+dependency change has been delivered.
+
 ## Development host and production integration
 
 Use the existing `Python/UnrealHost/AnimationCaptureHost.uproject` as the shared
