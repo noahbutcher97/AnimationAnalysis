@@ -8,14 +8,17 @@ and gameplay assertions belong in consuming projects.
 The foundation is independently buildable. The broader suite is still migrating;
 see [remaining ownership and work](docs/MIGRATION.md). Bounded asynchronous RGB/depth
 readback is available as an explicit opt-in. Python 0.3.0 adds
-[portable mesh records and bounded replay](docs/MESH_OBSERVATIONS.md). Production
-native skeletal surface sampling and mesh penetration remain outside the implemented scope.
+[portable mesh records and bounded replay](docs/MESH_OBSERVATIONS.md). The native
+[CPU bone/rigid reference producer](docs/NATIVE_MESH_REFERENCE.md) adds explicit
+enrollment and immutable geometry. Cached-GPU production sampling, full deformation
+coverage and mesh penetration remain outside the implemented scope.
 
 Read the [delivery evidence](docs/RENDERED_READBACK_DELIVERY.md),
 [asynchronous API and compatibility](docs/ASYNC_READBACK.md), and
 [development handoff](docs/DEVELOPMENT_HANDOFF.md) for verification and consumer ownership.
 The [mesh record delivery](docs/MESH_RECORD_DELIVERY.md) records Python 0.3.0
-verification and the remaining native sampling boundary.
+verification. Native reference scope and integration evidence are recorded in
+[the native delivery](docs/NATIVE_MESH_REFERENCE_DELIVERY.md).
 
 ## Verification
 

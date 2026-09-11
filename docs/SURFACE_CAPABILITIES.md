@@ -6,8 +6,10 @@ and [Katana requirements investigation](research/2026-09-11-katana-surface-requi
 The subsequent [animated readiness checks](research/2026-09-11-animated-surface-readiness.md)
 add loaded-asset findings, real animation/rigid-prop evidence and qualified task ordering.
 It defines requirements and qualification criteria. The [portable mesh record/replay
-slice](MESH_RECORD_DELIVERY.md) implements the first contract layer; native sampling
-backends remain unqualified for production. Existing capture defaults and formats remain unchanged.
+slice](MESH_RECORD_DELIVERY.md) implements the first contract layer; the
+[native reference delivery](NATIVE_MESH_REFERENCE_DELIVERY.md) qualifies explicit
+single-node CPU bone and rigid sampling. Cached-GPU and broader deformation backends
+remain pending. Existing capture defaults and formats remain unchanged.
 
 ## Product contract
 
@@ -37,8 +39,8 @@ The **current evidence** column is deliberately narrower than the target product
 | Capability / use case | Observation required | Current evidence and next qualification |
 |---|---|---|
 | Motion, pose and explicit proxies | Caller-nominated points, transforms and clocks | Existing foundation; retain as a useful inexpensive option without surface claims. |
-| Rigid props and attachments | Resident triangles, section identity and acquisition transform | Neutral animated rigid-prop projection/depth now passes. Production enrollment, sections and invalidation remain open. Existing sockets do not supply the prop's surface. |
-| Bone-deformed meshes | Effective weights, reference mapping, finalized pose, LOD and triangles | Real single-node animation, CPU/cached-GPU agreement, two LODs and delayed source retirement pass in a probe. General pose ordering, multiple sections and bounded production lifetime remain open. |
+| Rigid props and attachments | Resident triangles, section identity and acquisition transform | Native ordinary static meshes and direct qualified skeletal attachments now have explicit enrollment, immutable triangles, transform/pose checks and replacement rejection. Broader component/parent types remain unqualified. |
+| Bone-deformed meshes | Effective weights, reference mapping, finalized pose, LOD and triangles | Native CPU single-node references pass two LODs, multiple sections, effective-weight invalidation and retained-budget controls. Cached-GPU agreement remains probe evidence; production GPU and general pose ordering remain open. |
 | Morphs and facial correctives | Effective deformed positions at the required stage; active state/provenance | Small early extension experiment; production support follows separately unless required by selected consumer surfaces. A bone reference cannot serve as the expected final morph result. |
 | Cloth and simulated clothing | Mapped render vertices after simulation/blending, simulation identity and section coverage | Planned qualification including mixed cloth/non-cloth sections and frozen/skipped updates; not a bone-only fallback. |
 | Control Rig, IK, post-process and physics blending | The pose actually consumed by skinning, plus any later deformation | Source-driven previews do not establish live parity. Qualify ordering with a real skeletal component; separately identify simulation-driven surface changes. |
@@ -103,9 +105,9 @@ and material effects remain explicit extension work until their positive control
 pass; the API must already represent them without silent degradation.
 
 The [record/replay implementation plan](superpowers/plans/2026-09-11-mesh-observation-records.md)
-is complete for the portable contract. Next implement shared capability inventory and promote the neutral CPU/reference and
-GPU experiments into the existing host. The real skeletal-component/rigid-attachment
-probe now exists; production acceptance remains open. Complete the live consumer inventory described
+is complete for the portable contract. Native CPU/reference controls and conservative
+effective inventory are now in the existing host. Next promote bounded GPU acquisition
+and combined admission; complete production acceptance remains open. Complete the live consumer inventory described
 in the [Katana assessment](research/2026-09-11-katana-surface-requirements.md#required-consumer-qualification)
 before claiming that the qualified subset satisfies its actual needs. Any additional
 active required feature becomes qualification work, not an assumed exception.

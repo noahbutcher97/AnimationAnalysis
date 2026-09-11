@@ -1,7 +1,8 @@
 # Mesh observation records
 
-Portable records are available in `animation_analysis.mesh_records`. Native mesh
-acquisition is still pending. These contracts consume explicit producer evidence;
+Portable records are available in `animation_analysis.mesh_records`. The separate
+[native reference producer](NATIVE_MESH_REFERENCE.md) emits compatible CPU bone/rigid
+snapshots; cached-GPU acquisition remains pending. These contracts consume explicit producer evidence;
 they do not discover Unreal components, detect deformation or establish contact.
 
 ## Geometry and identity

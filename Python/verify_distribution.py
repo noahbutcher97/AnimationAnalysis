@@ -27,7 +27,7 @@ def verify(output):
         assert scratch.name.startswith('animation-analysis-isolation-')
         staged = scratch / 'source'
         staged.mkdir()
-        for name in ('pyproject.toml', 'README.md'):
+        for name in ('pyproject.toml', 'README.md', 'verify_mesh_reference.py'):
             shutil.copyfile(source/name, staged/name)
         for subdirectory in ('src', 'tests'):
             for path in (source/subdirectory).rglob('*.py'):

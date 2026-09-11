@@ -7,6 +7,11 @@ boundary. Current implementation, commands and results are in
 [delivery evidence](RENDERED_READBACK_DELIVERY.md), [host workflow](HOST_WORKFLOW.md)
 and [asynchronous API compatibility](ASYNC_READBACK.md).
 
+The next implemented slice is [native CPU bone/rigid reference sampling](NATIVE_MESH_REFERENCE.md).
+Its [delivery report](NATIVE_MESH_REFERENCE_DELIVERY.md) records verification and limits.
+Cached-GPU mesh acquisition and combined image/mesh budgeting are next. Katana's
+owner retains consumer edits, dependency pins, rebuilds and gameplay verification.
+
 ## Verified starting point
 
 Implementation baseline: `ba13149d3318f80d3098958cd1d2cd52bba3e5d1`.
@@ -28,8 +33,8 @@ performance controls. Consult the delivery report for the new standalone results
 The next delivery now has a [skeletal sampling research report](research/2026-09-11-skeletal-surface-sampling.md).
 It records UE 5.6 source findings, a neutral CPU/GPU geometry experiment, repeated
 measurements, retained replay evidence and the remaining contract/lifetime work.
-Its prototype is research evidence only; no production skeletal API or consumer
-dependency change has been delivered.
+Its prototype remains research evidence. The separate native reference API now
+qualifies a narrow subset; no consumer dependency change is part of that delivery.
 
 Product direction is recorded in [migration and reference-consumer guidance](MIGRATION.md#product-direction-and-reference-consumer).
 Target broad, robust capabilities with explicit user choices for fidelity and cost.
@@ -54,12 +59,12 @@ The [mesh record/replay slice](MESH_RECORD_DELIVERY.md) is now implemented in Py
 0.3.0: immutable geometry and request identities, explicit coverage eligibility and
 bounded replay with exclusive publication. Its [contract guide](MESH_OBSERVATIONS.md)
 and [completed plan](superpowers/plans/2026-09-11-mesh-observation-records.md) define the
-native producer's next target. Proceed with production CPU/rigid sampling and effective
-capability inventory, then bounded GPU sampling and combined budgets. No further broad
-research is required before that implementation. Production morph support is deferred unless a
+native producer's wire contract. The CPU/rigid reference and conservative effective
+inventory are implemented; proceed next with bounded GPU sampling and combined budgets.
+No further broad research is required before that implementation. Production morph support is deferred unless a
 required selected surface needs it; retain a small early positive morph experiment.
-Cloth, graph and material-effect coverage require separate qualification. No new
-native mesh acquisition API, engine patch or consumer dependency update has been delivered.
+Cloth, graph and material-effect coverage require separate qualification. No engine
+patch or consumer dependency update is included in the native reference delivery.
 
 ## Development host and production integration
 

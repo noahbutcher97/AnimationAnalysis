@@ -61,4 +61,7 @@ Katana's owner retains dependency-pin edits and consumer integration. No remote 
 - Review rulings: require evaluated weighted/socket bones; reject reference-pose
   overrides; fingerprint inverse binds/weight layout; serialize exports on the game
   thread so concurrent writes cannot multiply unaccounted work buffers.
-- Task 4: verification passed; delivery documentation, archival and commits closing.
+- Task 4 complete: native implementation committed as `4a2975a`; final-source runs
+  pass all 18 controls, distribution isolation passes, eight archived native bundles
+  replay, and verified retention precedes removal of 44 loose PNG copies. See
+  `docs/NATIVE_MESH_REFERENCE_DELIVERY.md` for hashes, measurements and consumer boundary.

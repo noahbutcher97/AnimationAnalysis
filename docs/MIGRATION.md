@@ -7,7 +7,8 @@ no local AI setup or private workflow definitions to interpret them.
 
 Current layout: `Python/src/animation_analysis` owns portable contracts, geometry,
 raster/pixel review, integrity, identities, metrics and temporal services. `Source/AnimationCapture`
-owns the Unreal recorder, PNG writer and synchronous/asynchronous surface adapters. `Python/UnrealHost`
+owns the Unreal recorder, PNG writer, synchronous/asynchronous surface adapters and
+[CPU bone/rigid references](NATIVE_MESH_REFERENCE.md). `Python/UnrealHost`
 owns neutral native tests. The old project paths below are compatibility or migration
 locations; shared implementations now have this repository as their source of truth.
 
