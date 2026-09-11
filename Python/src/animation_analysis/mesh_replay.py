@@ -65,6 +65,8 @@ def _safe_path(root, relative):
 
 
 def _read(path, maximum, expected=None):
+    if not stat.S_ISREG(path.lstat().st_mode):
+        raise EvidenceError('Mesh input must be a regular file')
     with path.open('rb') as stream:
         info = os.fstat(stream.fileno())
         if not stat.S_ISREG(info.st_mode) or info.st_size > maximum:
@@ -165,7 +167,7 @@ def write_mesh_observation(root, relative_record, completion, *, limits):
             (folder/'complete.pending').unlink()
         except OSError:
             pass  # Publication succeeded. A leftover temporary marker is not read.
-        return files
+        return dict(files,**{'complete.json':_descriptor(marker)})
     except (OSError,ValueError,TypeError,OverflowError,RecursionError) as error:
         raise EvidenceError(f'Cannot write mesh observation: {error}') from error
 
@@ -180,13 +182,14 @@ def read_mesh_observation(root, relative_record, *, limits):
         if not isinstance(limits,MeshRecordLimits):
             raise EvidenceError('Explicit MeshRecordLimits required')
         folder = _safe_path(root,relative_record)
-        marker_bytes = _read(_safe_path(folder,'complete.json'),limits.max_metadata_bytes)
+        metadata_limit = min(limits.max_metadata_bytes,limits.max_record_bytes)
+        marker_bytes = _read(_safe_path(folder,'complete.json'),metadata_limit)
         marker = _decode(marker_bytes)
         _schema(marker,'mesh_observation_commit',('files',))
         files = marker['files']
         if not isinstance(files,dict) or set(files) not in ({'record.json'}, {'record.json','positions.bin','indices.bin'}):
             raise EvidenceError('Unexpected mesh commit files')
-        record_bytes = _read_verified(folder,'record.json',files['record.json'],limits.max_metadata_bytes-len(marker_bytes))
+        record_bytes = _read_verified(folder,'record.json',files['record.json'],metadata_limit-len(marker_bytes))
         record = _decode(record_bytes)
         _schema(record,'mesh_observation',('request','status','completed','reason','observation','topology','buffers'))
         buffers = {name:desc for name,desc in files.items() if name != 'record.json'}

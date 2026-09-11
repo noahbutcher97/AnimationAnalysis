@@ -15,6 +15,11 @@ testable production slice, not the complete native sampler.
 **Spec:** [Surface capabilities and fidelity](../../SURFACE_CAPABILITIES.md), informed
 by [animated readiness evidence](../../research/2026-09-11-animated-surface-readiness.md).
 
+**Status:** Tasks 1–3 completed; [delivery evidence](../../MESH_RECORD_DELIVERY.md).
+The following native slices remain open. Review added retained failure-request
+identity, whole-record section coverage, pre-decode combined limits, nonregular-file
+rejection and a complete external replay manifest.
+
 ## Global constraints
 
 - Keep geometry, rendered visibility and interpretation distinct. No universal final-surface claim.
@@ -44,6 +49,8 @@ by [animated readiness evidence](../../research/2026-09-11-animated-surface-read
   identity and per-feature coverage.
 - `MeshCompletion`: request identity, terminal status/reason and completion clock;
   optional observation retains its original acquisition fields.
+- `MeshRequest`: component/configuration/generation and acquisition witness even
+  when completion has no geometry; both pose and clock are absent for early failures.
 - `FeatureCoverage`: feature identifier, state (`observed`, `inactive`, `unsupported`,
   `unknown`, `excluded`), producer/evidence identity and reason. Inactive requires a
   witness; absence from a record means unknown.
@@ -57,22 +64,22 @@ that exact schema. Deep-copy incoming sequences to immutable storage. Specify th
 canonical topology hash input, including section mapping, so material/topology changes
 cannot preserve an incompatible identity. Keep identity distinct from buffer precision.
 
-- [ ] Write failing tests for a rigid prop and bone reference with explicit units,
+- [x] Write failing tests for a rigid prop and bone reference with explicit units,
   section mapping, clocks and different component identities.
-- [ ] Add meaningful negative cases: mutable inputs changed after construction;
+- [x] Add meaningful negative cases: mutable inputs changed after construction;
   nonfinite coordinates; invalid/boolean indices; incomplete or overlapping section
   coverage; wrong topology hash; a different component generation; same engine frame
   with a different pose revision; attempted latency subtraction across unrelated
   clock domains. Keeping distinct acquisition/completion clocks is valid; subtracting
   them without a supplied relationship is not.
-- [ ] Add eligibility tests showing that an explicitly requested bone reference may
+- [x] Add eligibility tests showing that an explicitly requested bone reference may
   exclude cloth, while a requirement including cloth is insufficient. Missing,
   unsupported, unknown and explicitly excluded coverage must remain distinguishable.
   An unfamiliar feature/state cannot silently disappear or produce an eligible result.
-- [ ] Run `python -m unittest discover -s Python/tests -p test_mesh_records.py -v`
+- [x] Run `python -m unittest discover -s Python/tests -p test_mesh_records.py -v`
   in the development environment with this package installed; confirm the new tests
   fail because behavior is missing, then implement the smallest complete contract.
-- [ ] Rerun targeted tests, review schema/examples against them, and commit the
+- [x] Rerun targeted tests, review schema/examples against them, and commit the
   contract with its verification evidence. These tests qualify record handling,
   **not** Unreal's ability to detect active features.
 
@@ -87,8 +94,9 @@ cannot preserve an incompatible identity. Keep identity distinct from buffer pre
 
 **Interfaces:**
 
-- `MeshReplayLimits`: required limits for metadata bytes, vertex/index/section counts,
-  payload bytes and total retained bytes. Check source lengths before decoding.
+- Reuse `MeshRecordLimits`: required limits for metadata bytes, vertex/index/section
+  counts, payload bytes and combined encoded record bytes. These are not process RSS
+  limits. Check source lengths before decoding.
 - `read_mesh_observation(root, relative_record, *, limits) -> MeshCompletion`.
 - `write_mesh_observation(root, relative_record, completion, *, limits) -> dict`:
   returns an explicit file/hash manifest; does not overwrite a completed bundle.
@@ -100,15 +108,15 @@ Serialize acquisition and completion independently. Reject unknown schema/encodi
 versions; do not attempt legacy visual-evidence decoding under this format. Preserve
 unsupported-feature evidence without upgrading it to eligible geometry.
 
-- [ ] Write a neutral two-triangle/rigid-prop round-trip test with delayed completion,
+- [x] Write a neutral two-triangle/rigid-prop round-trip test with delayed completion,
   explicit topology and two distinct poses. Assert the restored values/identities.
-- [ ] Add corrupted and truncated buffers, mismatched hashes/counts, oversized
+- [x] Add corrupted and truncated buffers, mismatched hashes/counts, oversized
   metadata/payloads, directory escape/symlink escape, duplicate keys/sections and
   unsupported-version cases. Verify failure before large allocation where applicable.
-- [ ] Define the atomic completion marker and test interrupted output: incomplete
+- [x] Define the atomic completion marker and test interrupted output: incomplete
   bundles cannot be read as completed evidence. Reuse existing publication/path
   utilities where their documented semantics fit.
-- [ ] Run the targeted replay tests, implement bounded decoding/writing, rerun and
+- [x] Run the targeted replay tests, implement bounded decoding/writing, rerun and
   commit. Retain a small neutral replay fixture generated by the tests under their
   temporary directory; no generated mesh captures enter Git.
 
@@ -122,16 +130,16 @@ unsupported-feature evidence without upgrading it to eligible geometry.
 - Extend `Python/verify_distribution.py` only if its existing staged tests/import
   isolation do not exercise the new public module; avoid duplicate verification.
 
-- [ ] Document runnable explicit-input examples, bounds, schema version, insufficient
+- [x] Document runnable explicit-input examples, bounds, schema version, insufficient
   evidence behavior and immutable acquisition identity. State that native capture is
   still pending; do not announce morph or final-rendered-surface support.
-- [ ] Run all Python tests and
+- [x] Run all Python tests and
   `python Python/verify_distribution.py --output Saved/MeshRecords-<unique-run>`.
   Require both core and optional-image installations to pass and existing CLI/import
   isolation to remain intact. Record exact counts and archive applicable evidence.
-- [ ] Confirm no Unreal module/header or consumer wiring changed. Native/consumer
+- [x] Confirm no Unreal module/header or consumer wiring changed. Native/consumer
   tests are not claimed for this Python-only slice.
-- [ ] Commit the verified delivery and update the handoff with exact commit, tests,
+- [x] Commit the verified delivery and update the handoff with exact commit, tests,
   compatibility and the native implementation boundary. Do not update Katana's pin.
 
 ## Following native slices

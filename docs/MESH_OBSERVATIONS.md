@@ -61,7 +61,8 @@ structured reason strings. A `MeshRequirement` declares the component/generation
 topology/configuration, pose, units/coordinate system, allowed producers, understood
 feature vocabulary, required features and allowed exclusions. Required features
 must be observed or witnessed inactive. Missing or unfamiliar coverage is insufficient.
-An unrequired limitation is acceptable only through an explicit allowed exclusion.
+Only an explicitly `excluded` unrequired feature can use an allowed exclusion;
+`unknown` and `unsupported` remain insufficient even with that permission.
 An excluded cloth contribution can support a requested bone reference but cannot
 satisfy a requirement including cloth. Eligibility is unrelated to artistic quality
 or physical contact, and does not imply rendered visibility.
@@ -89,6 +90,9 @@ legacy records or silently fall back from a requested deformation capability.
 `animation_analysis.mesh_replay.write_mesh_observation(root, relative_record,
 completion, limits=...)` exclusively reserves a new bundle directory. Its companion
 `read_mesh_observation(root, relative_record, limits=...)` returns a `MeshCompletion`.
+The writer returns a complete file/hash manifest, **including `complete.json`**, so
+copying exactly its listed files preserves standalone replay. The marker's internal
+manifest omits its own hash; the returned external manifest supplies it.
 The root and any intermediate directories must already exist. Both APIs raise
 `EvidenceError` (a `ValueError`) for invalid/incomplete evidence or I/O failure.
 
@@ -115,7 +119,7 @@ before loading geometry. Replay metadata limits include **both JSON files**; com
 record bytes include metadata plus both binary buffers. A constructor-valid object
 can therefore exceed a tighter replay limit once envelope overhead is included.
 
-The writer checks limits before reserving the directory, writes/flushed payloads and
+The writer checks limits before reserving the directory, writes and flushes payloads and
 metadata, then publishes a complete marker with an exclusive atomic hard link from
 `complete.pending`. The filesystem must support hard links. A competing writer cannot
 reuse the directory; an existing marker is never replaced. Interrupted writes leave

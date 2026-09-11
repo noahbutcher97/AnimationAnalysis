@@ -3,7 +3,7 @@ import struct
 import unittest
 
 from animation_analysis import ClockStamp, PoseKey
-from animation_analysis.mesh_records import (
+from animation_analysis import (
     FeatureCoverage, MeshCompletion, MeshObservation, MeshRecordLimits,
     MeshRequest, MeshRequirement, MeshSection, MeshTopology, assess_mesh_coverage,
 )
@@ -154,6 +154,14 @@ class MeshRecordTests(unittest.TestCase):
             self.assertIn('rigid:'+state,result.reasons)
         sample=observation(coverage=[])
         self.assertIn('rigid:missing',assess_mesh_coverage(sample,requirement(sample)).reasons)
+
+    def test_exclusion_permission_does_not_reclassify_unknown_or_unsupported_evidence(self):
+        for state in ('unknown','unsupported'):
+            sample=observation(coverage=[FeatureCoverage('rigid','observed','p','w',''),
+                                         FeatureCoverage('cloth',state,'p','w','unresolved')])
+            result=assess_mesh_coverage(sample,requirement(sample,allowed_exclusions=('cloth',)))
+            self.assertFalse(result.eligible)
+            self.assertIn('cloth:'+state,result.reasons)
 
     def test_inactive_requires_a_witness_and_unfamiliar_features_remain_ineligible(self):
         sample=observation(coverage=[FeatureCoverage('rigid','inactive','p','w','not active')])

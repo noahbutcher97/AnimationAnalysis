@@ -3,13 +3,14 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import stat
 import tempfile
 import unittest
 from unittest.mock import patch
 
 from animation_analysis import ClockStamp, PoseKey
 from animation_analysis.mesh_records import MeshCompletion, MeshRequest
-from animation_analysis.mesh_replay import read_mesh_observation, write_mesh_observation
+from animation_analysis import read_mesh_observation, write_mesh_observation
 from test_mesh_records import LIMITS, observation, request
 
 
@@ -47,7 +48,25 @@ class MeshReplayTests(unittest.TestCase):
         self.assertEqual((self.root/'sample-12/indices.bin').read_bytes(),b'\0\0\0\0\1\0\0\0\2\0\0\0\0\0\0\0\2\0\0\0\3\0\0\0')
         self.assertEqual(struct.unpack('<12d',(self.root/'sample-12/positions.bin').read_bytes()),
                          (0,0,0,1,0,0,1,1,0,0,1,0))
-        self.assertEqual(set(manifest),{'record.json','indices.bin','positions.bin'})
+        self.assertEqual(set(manifest),{'record.json','indices.bin','positions.bin','complete.json'})
+
+    def test_returned_manifest_is_sufficient_for_standalone_replay(self):
+        manifest=self.write()
+        copied=self.root/'copied'
+        copied.mkdir()
+        for name,descriptor in manifest.items():
+            data=(self.root/'sample-12'/name).read_bytes()
+            self.assertEqual(hashlib.sha256(data).hexdigest(),descriptor['sha256'])
+            (copied/name).write_bytes(data)
+        self.assertEqual(read_mesh_observation(self.root,'copied',limits=LIMITS),self.completion)
+
+    def test_nonregular_file_rejects_before_potentially_blocking_open(self):
+        self.write()
+        # Windows lacks mkfifo. Model that OS boundary; all reader behavior remains real.
+        fifo=type('FileInfo',(),dict(st_mode=stat.S_IFIFO,st_size=0))()
+        with patch.object(Path,'stat',return_value=fifo), patch.object(Path,'open',side_effect=AssertionError('opened FIFO')):
+            with self.assertRaisesRegex(ValueError,'regular'):
+                self.read()
 
     def test_failure_round_trip_retains_request_without_inventing_geometry(self):
         target=MeshRequest('early','panel',3,'opaque-lod0',None,None,None)
@@ -132,6 +151,18 @@ class MeshReplayTests(unittest.TestCase):
             write_mesh_observation(self.root,'sample-12',self.completion,
                                    limits=dataclasses.replace(LIMITS,max_record_bytes=120))
         self.assertFalse((self.root/'sample-12').exists())
+
+    def test_combined_metadata_budget_is_enforced_before_decoding(self):
+        self.write()
+        marker=self.root/'sample-12/complete.json'
+        original=marker.read_bytes()
+        marker.write_bytes(b'not JSON'*100)
+        with self.assertRaisesRegex(ValueError,'limit'):
+            self.read(dataclasses.replace(LIMITS,max_record_bytes=20))
+        marker.write_bytes(original)
+        self.rewrite_record(lambda d:d.update(unknown='x'*500))
+        with self.assertRaisesRegex(ValueError,'limit'):
+            self.read(dataclasses.replace(LIMITS,max_record_bytes=marker.stat().st_size+20))
 
     def test_unsafe_paths_and_linked_payloads_are_rejected(self):
         for name in ('../escape','/absolute','C:relative','sample:stream','CON','LPT1.txt','bad.','bad\\part'):

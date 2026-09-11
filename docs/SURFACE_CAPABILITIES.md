@@ -5,8 +5,9 @@ Recorded 2026-09-11. This is the proposed production direction following the
 and [Katana requirements investigation](research/2026-09-11-katana-surface-requirements.md).
 The subsequent [animated readiness checks](research/2026-09-11-animated-surface-readiness.md)
 add loaded-asset findings, real animation/rigid-prop evidence and qualified task ordering.
-It defines requirements and qualification criteria; it does not announce new APIs
-or supported backends. Existing capture defaults and formats remain unchanged.
+It defines requirements and qualification criteria. The [portable mesh record/replay
+slice](MESH_RECORD_DELIVERY.md) implements the first contract layer; native sampling
+backends remain unqualified for production. Existing capture defaults and formats remain unchanged.
 
 ## Product contract
 
@@ -101,8 +102,8 @@ support deferred unless the selected consumer surfaces require it. Cloth, deform
 and material effects remain explicit extension work until their positive controls
 pass; the API must already represent them without silent degradation.
 
-Start with the [record/replay implementation plan](superpowers/plans/2026-09-11-mesh-observation-records.md),
-then implement shared capability inventory and promote the neutral CPU/reference and
+The [record/replay implementation plan](superpowers/plans/2026-09-11-mesh-observation-records.md)
+is complete for the portable contract. Next implement shared capability inventory and promote the neutral CPU/reference and
 GPU experiments into the existing host. The real skeletal-component/rigid-attachment
 probe now exists; production acceptance remains open. Complete the live consumer inventory described
 in the [Katana assessment](research/2026-09-11-katana-surface-requirements.md#required-consumer-qualification)

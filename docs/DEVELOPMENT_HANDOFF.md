@@ -50,12 +50,16 @@ real-animation, rigid-attachment, delayed-readback and matching-raster probe con
 with a source-supported Skin Cache setup-ordering mitigation for UE 5.6.1.
 Runtime component/material overrides and complete production acceptance remain open.
 
-Proceed with the [mesh record/replay plan](superpowers/plans/2026-09-11-mesh-observation-records.md),
-then production CPU/rigid and bounded GPU sampling. No further broad research is
-required before the record slice. Production morph support is deferred unless a
+The [mesh record/replay slice](MESH_RECORD_DELIVERY.md) is now implemented in Python
+0.3.0: immutable geometry and request identities, explicit coverage eligibility and
+bounded replay with exclusive publication. Its [contract guide](MESH_OBSERVATIONS.md)
+and [completed plan](superpowers/plans/2026-09-11-mesh-observation-records.md) define the
+native producer's next target. Proceed with production CPU/rigid sampling and effective
+capability inventory, then bounded GPU sampling and combined budgets. No further broad
+research is required before that implementation. Production morph support is deferred unless a
 required selected surface needs it; retain a small early positive morph experiment.
 Cloth, graph and material-effect coverage require separate qualification. No new
-production mesh API, engine patch or consumer dependency update has been delivered.
+native mesh acquisition API, engine patch or consumer dependency update has been delivered.
 
 ## Development host and production integration
 

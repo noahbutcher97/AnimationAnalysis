@@ -340,6 +340,6 @@ def assess_mesh_coverage(observation, requirement):
     for feature,item in coverage.items():
         if feature not in requirement.known_features:
             reasons.append(feature+':unfamiliar')
-        elif item.state not in ('observed','inactive') and feature not in requirement.allowed_exclusions:
+        elif item.state not in ('observed','inactive') and not (item.state == 'excluded' and feature in requirement.allowed_exclusions):
             reasons.append(feature+':'+item.state)
     return MeshEligibility(not reasons,tuple(reasons))

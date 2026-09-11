@@ -45,6 +45,14 @@ Shared offline services are available in version 0.2.0:
 - `metrics`: finite numeric summaries and nested deltas, plus explicit status precedence. The caller selects compatible metrics, units and thresholds. Boolean flags are not numeric observations. A pass applies only to executed cases; consumers must retain the complete case list.
 - `temporal`: clock-declared `TimeInterval`, unique named event windows and complete observation bracketing. Callers translate their own records into `ClockStamp`; missing coverage, unrelated clocks and unordered observations reject. Duplicate acquisition times remain available for the caller's identity/cadence checks.
 
+Version **0.3.0** adds `mesh_records` and `mesh_replay`: immutable component/topology
+and acquisition identities, explicit feature eligibility, bounded binary replay and
+exclusive bundle publication. Their public types/functions are also exported from
+`animation_analysis`. Supply caller limits, units, coordinates and producer coverage;
+no component discovery or native skeletal sampling is implied. The separate mesh
+schema is version 1; existing visual/motion/RGB/depth formats remain compatible.
+See [mesh contracts, binary layout and runnable example](../docs/MESH_OBSERVATIONS.md).
+
 ```python
 from animation_analysis.temporal import TimeInterval, bracket_observations
 from animation_analysis.artifacts import file_manifest, identity

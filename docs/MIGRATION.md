@@ -47,11 +47,11 @@ and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its own
    [Katana source assessment](research/2026-09-11-katana-surface-requirements.md).
    The [animated readiness follow-up](research/2026-09-11-animated-surface-readiness.md)
    adds real animation, rigid attachment, delayed geometry/raster controls and loaded
-   asset findings. Start the [record/replay slice](superpowers/plans/2026-09-11-mesh-observation-records.md),
-   then qualify production CPU/rigid and bounded GPU sampling. Preserve explicit
+   asset findings. The [portable record/replay slice](MESH_RECORD_DELIVERY.md) is
+   implemented in Python 0.3.0. Next qualify production CPU/rigid and bounded GPU sampling. Preserve explicit
    unsupported coverage and defer production morph/cloth/graph/material extensions
    until their positive controls pass. Katana's effective live component inventory
-   remains a prerequisite to consumer adequacy claims. Production implementation is open.
+   remains a prerequisite to consumer adequacy claims. Native implementation is open.
 2. Explicit region/support and temporal surfaces; offline intersection/containment
    with supported topology/deformation limits, then separate depth/volume/swept work.
 3. Move remaining generic paired evaluation/preview calculations and offline stream,
