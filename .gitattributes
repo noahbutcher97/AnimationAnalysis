@@ -1,0 +1,5 @@
+* text=auto eol=lf
+# Detector calibration identities include exact source bytes. Preserve the
+# inherited bytes until an intentional detector revision invalidates calibration.
+Python/src/animation_analysis/images.py -text
+Python/src/animation_analysis/pixel_alignment.py -text

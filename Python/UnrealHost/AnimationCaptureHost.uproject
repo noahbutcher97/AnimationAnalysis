@@ -1,0 +1,9 @@
+{
+    "FileVersion": 3,
+    "EngineAssociation": "5.6",
+    "DisableEnginePluginsByDefault": true,
+    "Modules": [
+        { "Name": "AnimationCaptureHost", "Type": "Editor", "LoadingPhase": "Default" }
+    ],
+    "Plugins": [{ "Name": "AnimationAnalysis", "Enabled": true }]
+}

@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "animation-analysis"
+version = "0.2.0"
+description = "Portable geometry, raster measurements and evidence-linked animation review"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+images = ["Pillow==12.0.0"]
+
+[project.scripts]
+animation-review = "animation_analysis.jobs.visual_review:main"
+animation-surface-review = "animation_analysis.jobs.surface_review:main"
+animation-segment-calibrate = "animation_analysis.jobs.segment_calibration:main"
+animation-segment-detect = "animation_analysis.jobs.segment_detection:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["animation_analysis*"]
+namespaces = false
+
+[tool.setuptools]
+include-package-data = false

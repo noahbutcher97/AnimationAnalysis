@@ -1,0 +1,15 @@
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv/
+.vs/
+*.sln
+*.pdb
+*.dll
+*.lib
