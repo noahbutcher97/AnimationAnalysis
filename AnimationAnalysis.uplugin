@@ -1,13 +1,13 @@
 {
     "FileVersion": 3,
-    "Version": 1,
-    "VersionName": "0.1.0",
+    "Version": 2,
+    "VersionName": "0.2.0",
     "FriendlyName": "Animation Analysis",
     "Description": "Explicit-subject animation observations and bounded viewport capture.",
     "Category": "Animation",
     "CanContainContent": false,
     "EnabledByDefault": false,
     "Modules": [
-        { "Name": "AnimationCapture", "Type": "Editor", "LoadingPhase": "Default" }
+        { "Name": "AnimationCapture", "Type": "Editor", "LoadingPhase": "PostConfigInit" }
     ]
 }

@@ -23,10 +23,24 @@ import zipfile
 LIFECYCLE_TESTS = (
     "AnimationAnalysis.Capture.Portability.IndependentSessions",
     "AnimationAnalysis.Capture.Portability.ExtensionIntegrity",
+    "AnimationAnalysis.Capture.Portability.ReadbackAdmission",
+    "AnimationAnalysis.Capture.Portability.ReadbackByteLimit",
+    "AnimationAnalysis.Capture.Portability.ReadbackTimeout",
 )
 SURFACE_TESTS = (
     "AnimationAnalysis.Capture.Surfaces.LabelOwnership",
     "AnimationAnalysis.Capture.Surfaces.RenderedGeometry",
+)
+RENDERED_TESTS = SURFACE_TESTS + (
+    "AnimationAnalysis.Capture.Rendered.ReadbackRGBBytes",
+    "AnimationAnalysis.Capture.Rendered.ReadbackRGB10Bit",
+    "AnimationAnalysis.Capture.Async.RenderedGeometry",
+    "AnimationAnalysis.Capture.Async.DelayedIdentity",
+    "AnimationAnalysis.Capture.Async.RenderedLifecycle",
+    "AnimationAnalysis.Capture.Async.WorldCleanup",
+    "AnimationAnalysis.Capture.Async.SessionRGB",
+    "AnimationAnalysis.Capture.Async.SessionCleanup",
+    "AnimationAnalysis.Capture.Host.InteractiveCommands",
 )
 HOST_MARKER = ".animation-analysis-host.json"
 ARCHIVE_INVENTORY = "_replay_inventory.json"

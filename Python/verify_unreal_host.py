@@ -12,8 +12,9 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 
-from host_tools import (LIFECYCLE_TESTS, SURFACE_TESTS, ProcessFailure, archive_replay,
+from host_tools import (LIFECYCLE_TESTS, RENDERED_TESTS, ProcessFailure, archive_replay,
                         check_test_results, checked_path, create_inventory, prepare_host,
                         run_process, safe_relative, sha256_file, stage_sources, write_json)
 
@@ -27,7 +28,7 @@ def _new_output(output):
 
 
 def _expected_tests(rendered, expected_tests):
-    expected = tuple(expected_tests) if expected_tests is not None else LIFECYCLE_TESTS + (SURFACE_TESTS if rendered else ())
+    expected = tuple(expected_tests) if expected_tests is not None else LIFECYCLE_TESTS + (RENDERED_TESTS if rendered else ())
     if not expected or len(set(expected)) != len(expected) or any(
             not re.fullmatch(r"AnimationAnalysis\.Capture\.[A-Za-z0-9_.]+", name) for name in expected):
         raise ValueError("Tests must be unique exact AnimationAnalysis.Capture paths")
@@ -79,35 +80,97 @@ def observation_snapshot(host):
             "files": {name: sha256_file(safe_relative(origin, name)) for name in paths}}
 
 
-def _retain_observations(host, output, *, delete_pngs=False, before=None):
+def _confirmed_process_cleanup(commands):
+    return bool(commands and commands[-1].get("status") in ("timed_out", "interrupted")
+                and commands[-1].get("tree_cleanup_complete") is True)
+
+
+class _RetentionReads:
+    """Bound only transient source-read permission failures after owned cleanup."""
+    def __init__(self, output, report, retry_eligible):
+        self.output = Path(output)
+        self.report = report
+        report.update(status="not_needed", retry_eligible=retry_eligible,
+                      max_attempts=4 if retry_eligible else 1, max_retry_wait_seconds=1.75,
+                      retry_wait_seconds=0.0, attempts=[], recovered_reads=[])
+
+    def save(self):
+        write_json(self.output / "retention-attempts.json", self.report)
+
+    def read(self, operation, path, purpose):
+        for attempt in range(1, self.report["max_attempts"] + 1):
+            try:
+                result = operation()
+            except PermissionError as error:
+                self.report["status"] = "failed"
+                entry = {"path": str(path), "operation": purpose, "attempt": attempt,
+                         "status": "permission_error", "error": str(error)}
+                self.report["attempts"].append(entry)
+                remaining = self.report["max_retry_wait_seconds"] - self.report["retry_wait_seconds"]
+                if attempt == self.report["max_attempts"] or remaining <= 0:
+                    self.save()
+                    raise
+                delay = min((.25, .5, 1.0)[attempt - 1], remaining)
+                entry["retry_after_seconds"] = delay
+                self.report["status"] = "retrying"
+                self.save()
+                time.sleep(delay)
+                self.report["retry_wait_seconds"] += delay
+            else:
+                if attempt > 1:
+                    self.report["status"] = "recovered"
+                    self.report["attempts"].append({"path": str(path), "operation": purpose,
+                                                    "attempt": attempt, "status": "succeeded"})
+                    self.report["recovered_reads"].append({"path": str(path), "operation": purpose})
+                return result
+
+
+def _retain_observations(host, output, *, delete_pngs=False, before=None,
+                         retry_permission_errors=False, retention_reads=None):
+    """Retain once; retries apply solely to source reads, never archival/mutations."""
     origin = checked_path(host / "Saved/Observations")
     before = before or {"directories": [], "files": {}}
-    for name, digest in before["files"].items():
-        if sha256_file(safe_relative(origin, name)) != digest:
-            raise ValueError(f"Prior-run observation was modified during this run: {name}")
-    if not origin.exists():
-        return {"status": "no_artifacts", "verified_entries": 0, "deleted_pngs": []}
-    # The dedicated run-owned observation subtree defines this run's inventory.
-    paths = sorted(path.relative_to(origin).as_posix() for path in origin.rglob("*")
-                   if path.is_file() and path.relative_to(origin).as_posix() not in before["files"])
-    if any(name.split("/")[0] in before["directories"] for name in paths):
-        raise ValueError("New observations were written into a previous run directory")
-    if not paths:
-        return {"status": "no_artifacts", "verified_entries": 0, "deleted_pngs": []}
-    original = create_inventory(origin, paths)
-    destination = output / "observations"
-    for entry in original["files"]:
-        source = safe_relative(origin, entry["path"])
-        target = safe_relative(destination, entry["path"], must_exist=False)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source, target)
-        if sha256_file(target) != entry["sha256"]:
-            raise ValueError(f"Observation changed during retention: {source}")
-    inventory = create_inventory(destination, paths)
-    write_json(output / "replay-inventory.json", inventory)
-    retention = archive_replay(destination, inventory, output / "replay-evidence.zip", delete_pngs=delete_pngs)
-    write_json(output / "replay-retention.json", retention)
-    return retention
+    reader = _RetentionReads(output, retention_reads if retention_reads is not None else {}, retry_permission_errors)
+    try:
+        for name, digest in before["files"].items():
+            source = safe_relative(origin, name)
+            if reader.read(lambda: sha256_file(source), source, "prior_inventory_hash") != digest:
+                raise ValueError(f"Prior-run observation was modified during this run: {name}")
+        if not origin.exists():
+            return {"status": "no_artifacts", "verified_entries": 0, "deleted_pngs": []}
+        # The dedicated run-owned observation subtree defines this run's inventory.
+        paths = sorted(path.relative_to(origin).as_posix() for path in origin.rglob("*")
+                       if path.is_file() and path.relative_to(origin).as_posix() not in before["files"])
+        if any(name.split("/")[0] in before["directories"] for name in paths):
+            raise ValueError("New observations were written into a previous run directory")
+        if not paths:
+            return {"status": "no_artifacts", "verified_entries": 0, "deleted_pngs": []}
+        if len({name.casefold() for name in paths}) != len(paths):
+            raise ValueError("Duplicate replay paths differ only by case")
+        files = []
+        for name in paths:
+            source = safe_relative(origin, name)
+            # Inventory exactly one file so retrying a locked read does not rerun
+            # earlier reads or any copy, ZIP creation, verification or deletion.
+            entry = reader.read(lambda: create_inventory(origin, [name]), source, "source_inventory")
+            files.extend(entry["files"])
+        destination = output / "observations"
+        for entry in files:
+            source = safe_relative(origin, entry["path"])
+            target = safe_relative(destination, entry["path"], must_exist=False)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with reader.read(lambda: source.open("rb"), source, "copy_source_open") as input_stream:
+                with target.open("wb") as output_stream:
+                    shutil.copyfileobj(input_stream, output_stream, 1024 * 1024)
+            if sha256_file(target) != entry["sha256"]:
+                raise ValueError(f"Observation changed during retention: {source}")
+        inventory = create_inventory(destination, paths)
+        write_json(output / "replay-inventory.json", inventory)
+        retention = archive_replay(destination, inventory, output / "replay-evidence.zip", delete_pngs=delete_pngs)
+        write_json(output / "replay-retention.json", retention)
+        return retention
+    finally:
+        reader.save()
 
 
 def _test(engine, host, output, rendered, expected, timeout, commands, result):
@@ -117,6 +180,7 @@ def _test(engine, host, output, rendered, expected, timeout, commands, result):
                     host, output, "host-console.log", timeout, commands)
     except ProcessFailure as error:
         process_error = error
+        result["process_failure"] = error.record
     log_path = output / "host-editor.log"
     log = log_path.read_text(encoding="utf-8-sig", errors="replace") if log_path.exists() else ""
     result.update(check_test_results(log, expected, rendered=rendered))
@@ -161,7 +225,9 @@ def verify(engine, output, *, rendered=False, expected_tests=None, build_timeout
         preserve = isinstance(caught, ProcessFailure) and caught.record.get("tree_cleanup_complete") is False
     finally:
         try:
-            result["retention"] = _retain_observations(host, output, delete_pngs=delete_pngs)
+            result["retention"] = _retain_observations(host, output, delete_pngs=delete_pngs,
+                retry_permission_errors=_confirmed_process_cleanup(commands),
+                retention_reads=result.setdefault("retention_reads", {}))
             result["native_manifests"] = len(list((output / "observations").rglob("session.json")))
         except Exception as caught:
             preserve = True
@@ -199,6 +265,7 @@ def prepare(engine, output, host, *, plugin=None, stage_only=False, launch=False
     result = {"status": "running", "build_status": "not_run", "runtime_status": "not_run", "host": str(host)}
     commands = []
     before = None
+    failure = None
     try:
         hashes = prepare_host(plugin, host)
         result.update(_identity(engine, host, output, hashes))
@@ -227,6 +294,7 @@ def prepare(engine, output, host, *, plugin=None, stage_only=False, launch=False
             write_json(output / "host-commands.json", commands)
             result.update(status="launched", editor_pid=process.pid, runtime_status="interactive_unverified")
     except Exception as error:
+        failure = error
         if result["status"] != "skipped":
             result["status"] = "failed"
         if result["build_status"] == "running":
@@ -238,11 +306,14 @@ def prepare(engine, output, host, *, plugin=None, stage_only=False, launch=False
     finally:
         if run_tests and before is not None:
             try:
-                result["retention"] = _retain_observations(host, output, delete_pngs=delete_pngs, before=before)
+                result["retention"] = _retain_observations(host, output, delete_pngs=delete_pngs, before=before,
+                    retry_permission_errors=_confirmed_process_cleanup(commands),
+                    retention_reads=result.setdefault("retention_reads", {}))
             except Exception as error:
                 result.update(status="failed", retention_error=str(error))
                 write_json(output / "host-verification.json", result)
-                raise
+                if failure is None:
+                    raise
         write_json(output / "host-verification.json", result)
     print(json.dumps(result, indent=2))
     return result
@@ -252,7 +323,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--engine", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--rendered", action="store_true", help="Run the exact lifecycle and surface controls using D3D11")
+    parser.add_argument("--rendered", action="store_true", help="Run the exact lifecycle, renderer, async and interactive controls using D3D11")
     parser.add_argument("--test", action="append", help="Override the exact expected test list; repeat for each full path")
     parser.add_argument("--prepare", type=Path, help="Stage and build a retained host beneath this checkout's Saved directory")
     parser.add_argument("--stage-only", action="store_true", help="With --prepare, copy sources without building")

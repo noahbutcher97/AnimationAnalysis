@@ -1,6 +1,6 @@
 """Summarize retained host samples without inferring contact or universal speedups."""
 import argparse
-from collections import defaultdict
+from collections import Counter, defaultdict
 import hashlib
 import json
 import math
@@ -22,6 +22,7 @@ def summarize(manifest, *, repetitions=3, samples=120):
     if not modes:
         raise ValueError('No samples')
     result = []
+    eligible = manifest.get('comparison_eligible', True)
     for mode in modes:
         if {rep for m, rep in groups if m == mode} != set(range(repetitions)):
             raise ValueError(f'Incomplete repetition coverage: {mode}')
@@ -30,15 +31,21 @@ def summarize(manifest, *, repetitions=3, samples=120):
             if len(rows) != samples or sorted(row['sample'] for row in rows) != list(range(samples)):
                 raise ValueError(f'Incomplete or duplicated sample coverage: {mode}/{repetition}')
             metrics = {}
+            outcomes = Counter(row.get('terminal_status', 'completed') for row in rows)
+            if any(status != 'completed' for status in outcomes):
+                eligible = False
             for key in ('frame_wall_s', 'acquisition_wall_s', 'depth_readback_wall_s', 'completion_latency_s', 'decode_wall_s'):
                 if any(key in row for row in rows):
-                    metrics[key.replace('_s', '_ms')] = quantiles([row[key] * 1000 for row in rows])
-            item = dict(mode=mode, repetition=repetition, sample_count=len(rows), metrics=metrics)
+                    measured = rows if key in ('frame_wall_s', 'acquisition_wall_s') else [
+                        row for row in rows if row.get('terminal_status', 'completed') == 'completed']
+                    if measured:
+                        metrics[key.replace('_s', '_ms')] = quantiles([row[key] * 1000 for row in measured])
+            item = dict(mode=mode, repetition=repetition, sample_count=len(rows), outcomes=dict(outcomes), metrics=metrics)
             for key in ('pending_requests', 'reserved_bytes', 'peak_bytes', 'rejected', 'cancelled', 'failed', 'timeouts'):
                 if any(key in row for row in rows):
                     item[key + '_max'] = max(row[key] for row in rows)
             result.append(item)
-    return dict(status='measurements_recorded', percentile_method='nearest_rank', runs=result,
+    return dict(status='measurements_recorded', comparison_eligible=eligible, percentile_method='nearest_rank', runs=result,
                 policy={key: value for key, value in manifest.items() if key != 'samples'},
                 limits='Workstation and declared fixture only. Readback samples exclude encoding and file export; frame times include engine scheduling. No universal speedup inferred.')
 

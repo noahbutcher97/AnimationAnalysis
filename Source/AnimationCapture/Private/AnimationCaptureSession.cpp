@@ -2,6 +2,7 @@
 #include "AnimationCapture/AnimationCaptureSession.h"
 #include "AnimationCapture/AnimationCaptureJson.h"
 #include "AnimationCapture/AnimationCaptureImageWriter.h"
+#include "AnimationCapture/ViewportAsyncCapture.h"
 
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
@@ -61,10 +62,13 @@ struct FAnimationCaptureSession::FImpl
 	int64 DataBytes = 0;
 	bool bDataLimit = false;
 	TArray<FString> Errors;
-	TUniquePtr<IFileHandle> Samples, Frames, Markers;
+	TUniquePtr<IFileHandle> Samples, Frames, Markers, ReadbackEvents;
 	FAnimationCaptureImageWriter ImageWriter;
+	TUniquePtr<FViewportAsyncCapture> Readback;
+	TMap<uint64, TSharedRef<FJsonObject>> PendingReadbacks;
 	TArray<TSharedRef<FJsonObject>> PendingFrames;
 	int32 SubmittedFrames = 0, RejectedFrames = 0, FailedFrames = 0, PeakPendingFrames = 0;
+	int64 PeakPipelineBytes = 0;
 	double ImageFlushSeconds = 0, CaptureWallSeconds = 0;
 	FDelegateHandle TickHandle, DrawHandle, CleanupHandle;
 	FTSTicker::FDelegateHandle WatchdogHandle;
@@ -114,7 +118,7 @@ struct FAnimationCaptureSession::FImpl
 	void WriteLine(IFileHandle *File, const TSharedRef<FJsonObject> &Object)
 	{
 		const FTCHARToUTF8 Utf8(*(JsonText(Object) + TEXT("\n")));
-		if (DataBytes + ImageWriter.GetReservedFileBytes() + Utf8.Length() > Settings.MaxDataBytes)
+		if (DataBytes + ImageWriter.GetReservedFileBytes() + PendingReadbackFileBytes() + Utf8.Length() > Settings.MaxDataBytes)
 		{
 			bDataLimit = true;
 			Error(TEXT("Data byte budget exhausted; evidence is incomplete"));
@@ -337,8 +341,86 @@ struct FAnimationCaptureSession::FImpl
 		WriteLine(Samples.Get(), Row);
 	}
 
+	int64 PendingReadbackFileBytes() const
+	{
+		int64 Bytes = 0;
+		for (const auto& Pair : PendingReadbacks)
+		{
+			Bytes += FAnimationCaptureImageWriter::FileByteReservation(FIntPoint(
+				int32(Pair.Value->GetNumberField(TEXT("width"))), int32(Pair.Value->GetNumberField(TEXT("height")))));
+		}
+		return Bytes;
+	}
+	void PixelEvidence(const TSharedRef<FJsonObject>& Row, const TArray<FColor>& Pixels)
+	{
+		if (Pixels.IsEmpty()) { Row->SetBoolField(TEXT("nontrivial_pixels"), false); return; }
+		int32 MinChannel = 255, MaxChannel = 0, Varied = 0;
+		const FColor First = Pixels[0];
+		for (int32 I = 0; I < Pixels.Num(); I += FMath::Max(1, Pixels.Num() / 8192))
+		{
+			MinChannel = FMath::Min(MinChannel, int32(FMath::Min3(Pixels[I].R, Pixels[I].G, Pixels[I].B)));
+			MaxChannel = FMath::Max(MaxChannel, int32(FMath::Max3(Pixels[I].R, Pixels[I].G, Pixels[I].B)));
+			Varied += FMath::Abs(int32(Pixels[I].R) - First.R) > 8 || FMath::Abs(int32(Pixels[I].G) - First.G) > 8 || FMath::Abs(int32(Pixels[I].B) - First.B) > 8;
+		}
+		Row->SetBoolField(TEXT("nontrivial_pixels"), Varied >= 8 && MaxChannel - MinChannel >= 8);
+	}
+	void CollectReadbacks()
+	{
+		if (!Readback) { return; }
+		FAnimationCaptureReadbackResult Result;
+		while (Readback->Poll(Result))
+		{
+			const auto* Pending = PendingReadbacks.Find(Result.Request.RequestId);
+			if (!Pending) { Error(TEXT("Readback result has no admitted frame")); continue; }
+			const auto Row = *Pending; PendingReadbacks.Remove(Result.Request.RequestId);
+			const TCHAR* Status = Result.Status == EAnimationCaptureReadbackStatus::Completed ? TEXT("completed") :
+				Result.Status == EAnimationCaptureReadbackStatus::Cancelled ? TEXT("cancelled") :
+				Result.Status == EAnimationCaptureReadbackStatus::TimedOut ? TEXT("timed_out") : TEXT("failed");
+			auto Event = MakeShared<FJsonObject>();
+			Event->SetNumberField(TEXT("request_id"), double(Result.Request.RequestId));
+			Event->SetStringField(TEXT("session_id"), Result.Request.SessionId); Event->SetStringField(TEXT("status"), Status);
+			Event->SetStringField(TEXT("error"), Result.Error);
+			Event->SetNumberField(TEXT("acquisition_wall_elapsed_s"), Row->GetNumberField(TEXT("wall_elapsed_s")));
+			Event->SetNumberField(TEXT("completed_wall_elapsed_s"), Result.CompletedWallSeconds - StartWall);
+			if (Result.bHasView) { Event->SetNumberField(TEXT("engine_frame"), double(Result.View.EngineFrame)); }
+			if (Result.Status != EAnimationCaptureReadbackStatus::Completed)
+			{
+				WriteLine(ReadbackEvents.Get(), Event);
+				++FailedFrames; Error(FString::Printf(TEXT("RGB request %llu %s: %s"), Result.Request.RequestId, Status, *Result.Error)); continue;
+			}
+			if (!Result.bHasView || Result.View.EngineFrame != uint64(Row->GetNumberField(TEXT("engine_frame"))))
+			{ WriteLine(ReadbackEvents.Get(), Event); ++FailedFrames; Error(TEXT("RGB acquisition frame differs from its immutable row")); continue; }
+			Row->SetStringField(TEXT("readback_mode"), TEXT("asynchronous"));
+			Row->SetStringField(TEXT("readback_session_id"), Result.Request.SessionId);
+			Row->SetNumberField(TEXT("readback_request_id"), double(Result.Request.RequestId));
+			Row->SetStringField(TEXT("readback_decoder"), FAnimationCaptureReadbackProducer::DecoderIdentity());
+			Row->SetNumberField(TEXT("renderer_frame_number"), Result.View.RendererFrameNumber);
+			Row->SetNumberField(TEXT("renderer_view_key"), Result.View.ViewKey);
+			Row->SetNumberField(TEXT("renderer_world_time_s"), Result.View.WorldTimeSeconds);
+			Row->SetNumberField(TEXT("renderer_real_time_s"), Result.View.RealTimeSeconds);
+			Row->SetStringField(TEXT("renderer_clock"), TEXT("unreal.view_family.world_time"));
+			Row->SetStringField(TEXT("readback_viewport_id"), Result.Request.ViewportId);
+			Row->SetNumberField(TEXT("readback_viewport_generation"), double(Result.Request.ViewportGeneration));
+			Row->SetNumberField(TEXT("readback_completed_wall_elapsed_s"), Result.CompletedWallSeconds - StartWall);
+			Row->SetNumberField(TEXT("readback_collected_wall_elapsed_s"), Result.CollectedWallSeconds - StartWall);
+			Row->SetNumberField(TEXT("readback_collected_engine_frame"), double(GFrameCounter));
+			Row->SetNumberField(TEXT("readback_latency_s"), Result.CompletionLatencySeconds);
+			Row->SetNumberField(TEXT("readback_decode_wall_s"), Result.DecodeSeconds);
+			TArray<TSharedPtr<FJsonValue>> Matrix;
+			for (int32 R = 0; R < 4; ++R) { for (int32 C = 0; C < 4; ++C) { Matrix.Add(MakeShared<FJsonValueNumber>(Result.View.WorldToClip.M[R][C])); } }
+			Row->SetArrayField(TEXT("renderer_world_to_clip_row_major"), Matrix);
+			PixelEvidence(Row, Result.RGB);
+			FString QueueError;
+			if (!ImageWriter.Enqueue(Directory / Row->GetStringField(TEXT("file")), Result.Request.Size, MoveTemp(Result.RGB), QueueError))
+			{ WriteLine(ReadbackEvents.Get(), Event); ++RejectedFrames; Error(QueueError); continue; }
+			// Transfer the PNG reservation to the writer before metadata can spend that budget.
+			WriteLine(ReadbackEvents.Get(), Event);
+			PendingFrames.Add(Row); PeakPendingFrames = FMath::Max(PeakPendingFrames, ImageWriter.GetPendingCount());
+		}
+	}
 	void CollectFrames(bool bWait = false)
 	{
+		CollectReadbacks();
 		FAnimationCaptureImageWriter::FResult Result;
 		while (ImageWriter.Collect(Result, bWait))
 		{
@@ -372,6 +454,11 @@ struct FAnimationCaptureSession::FImpl
 			return;
 		}
 		CollectFrames();
+		if (Settings.bUseAsyncReadback && !Readback)
+		{
+			// Enroll before the next renderer view; this draw cannot supply a witness retroactively.
+			Readback = MakeUnique<FViewportAsyncCapture>(World.Get(), Viewport, Settings.bUseAsyncDiagnosticResolution); return;
+		}
 		++DrawCount;
 		const bool bResourcesReady = FAssetCompilingManager::Get().GetNumRemainingAssets() == 0 &&
 									 !(GShaderCompilingManager && GShaderCompilingManager->IsCompiling());
@@ -400,15 +487,22 @@ struct FAnimationCaptureSession::FImpl
 		LastFrame = Now;
 		const FIntPoint Size = Viewport->GetRenderTargetTextureSizeXY();
 		FString QueueError;
-		if (!ImageWriter.CanEnqueue(Size, QueueError))
+		const int64 PerFrameMemory = FAnimationCaptureImageWriter::FileByteReservation(Size) + int64(Size.X) * Size.Y * 4;
+		// Collected cancellations/timeouts can still own submitted GPU resources.
+		// Count producer reservations until retirement, not only rows awaiting a result.
+		const int32 OutstandingFrames = (Readback ? Readback->GetStats().PendingRequests : 0) + ImageWriter.GetPendingCount();
+		if (!ImageWriter.CanEnqueue(Size, QueueError) || (Settings.bUseAsyncReadback &&
+			(OutstandingFrames >= FAnimationCaptureImageWriter::MaxPendingFrames ||
+			 int64(OutstandingFrames + 1) * PerFrameMemory > FAnimationCaptureImageWriter::MaxPendingBytes)))
 		{
+			if (QueueError.IsEmpty()) { QueueError = TEXT("Combined readback/PNG queue budget exhausted"); }
 			++RejectedFrames;
 			Error(QueueError);
 			FString Unused;
 			Owner->Stop(TEXT("image_queue_limit_reached"), Unused);
 			return;
 		}
-		if (DataBytes + ImageWriter.GetReservedFileBytes() + FAnimationCaptureImageWriter::FileByteReservation(Size) >
+		if (DataBytes + ImageWriter.GetReservedFileBytes() + PendingReadbackFileBytes() + FAnimationCaptureImageWriter::FileByteReservation(Size) >
 			Settings.MaxDataBytes)
 		{
 			bDataLimit = true;
@@ -420,8 +514,8 @@ struct FAnimationCaptureSession::FImpl
 		// links, camera and sample identity stay on this originating game frame.
 		auto Row = Observation();
 		const double ReadbackStart = FPlatformTime::Seconds();
-		if (!GetViewportScreenShot(Viewport, Pixels) || Size.X <= 0 || Size.Y <= 0 ||
-			Pixels.Num() != static_cast<int64>(Size.X) * Size.Y)
+		if (!Settings.bUseAsyncReadback && (!GetViewportScreenShot(Viewport, Pixels) || Size.X <= 0 || Size.Y <= 0 ||
+			Pixels.Num() != static_cast<int64>(Size.X) * Size.Y))
 		{
 			Error(TEXT("PIE viewport pixel readback failed"));
 			return;
@@ -454,16 +548,7 @@ struct FAnimationCaptureSession::FImpl
 		Row->SetBoolField(TEXT("render_resources_ready"), bResourcesReady);
 		Row->SetNumberField(TEXT("width"), Size.X);
 		Row->SetNumberField(TEXT("height"), Size.Y);
-		int32 MinChannel = 255, MaxChannel = 0, Varied = 0;
-		const FColor First = Pixels[0];
-		for (int32 I = 0; I < Pixels.Num(); I += FMath::Max(1, Pixels.Num() / 8192))
-		{
-			MinChannel = FMath::Min(MinChannel, static_cast<int32>(FMath::Min3(Pixels[I].R, Pixels[I].G, Pixels[I].B)));
-			MaxChannel = FMath::Max(MaxChannel, static_cast<int32>(FMath::Max3(Pixels[I].R, Pixels[I].G, Pixels[I].B)));
-			Varied += FMath::Abs(int32(Pixels[I].R) - First.R) > 8 || FMath::Abs(int32(Pixels[I].G) - First.G) > 8 ||
-					  FMath::Abs(int32(Pixels[I].B) - First.B) > 8;
-		}
-		Row->SetBoolField(TEXT("nontrivial_pixels"), Varied >= 8 && MaxChannel - MinChannel >= 8);
+		if (!Settings.bUseAsyncReadback) { PixelEvidence(Row, Pixels); }
 		APlayerController *PC = World->GetFirstPlayerController();
 		if (PC)
 		{
@@ -501,6 +586,26 @@ struct FAnimationCaptureSession::FImpl
 				Row->SetArrayField(TEXT("projection_view_rect"), Bounds);
 				Row->SetStringField(TEXT("projection_source"), TEXT("LocalPlayerAfterDraw"));
 			}
+		}
+		if (Settings.bUseAsyncReadback)
+		{
+			FAnimationCaptureReadbackRequest Request;
+			Request.SessionId = FPaths::GetCleanFilename(Directory); Request.RequestId = SubmittedFrames + 1;
+			Request.ViewportId = WorldPath + TEXT("/GameViewport"); Request.ViewportGeneration = 1;
+			Request.ExpectedEngineFrame = GFrameCounter; Request.ClockId = TEXT("unreal.world.simulation");
+			Request.AcquisitionTimeSeconds = Now; Request.Size = Size;
+			for (int32 I = 0; I < Participants.Num(); ++I)
+			{ Request.PoseRevisions.Add({Participants[I].Id, Poses[I].Serial, Poses[I].EngineFrame, !Participants[I].Actor.IsValid()}); }
+			FAnimationCaptureReadbackTicket Ticket; const double EnqueueStart = FPlatformTime::Seconds();
+			if (!Readback->CaptureRGB(Request, Ticket, QueueError))
+			{
+				++RejectedFrames; Error(QueueError); FString Unused; Owner->Stop(TEXT("readback_admission_failed"), Unused); return;
+			}
+			Row->SetNumberField(TEXT("readback_wall_s"), FPlatformTime::Seconds() - EnqueueStart);
+			Row->SetNumberField(TEXT("readback_enqueue_wall_s"), Row->GetNumberField(TEXT("readback_wall_s")));
+			PendingReadbacks.Add(Request.RequestId, Row); ++SubmittedFrames;
+			PeakPipelineBytes = FMath::Max(PeakPipelineBytes, int64(OutstandingFrames + 1) * PerFrameMemory);
+			PeakPendingFrames = FMath::Max(PeakPendingFrames, OutstandingFrames + 1); return;
 		}
 		if (!ImageWriter.Enqueue(Directory / File, Size, MoveTemp(Pixels), QueueError))
 		{
@@ -542,6 +647,26 @@ struct FAnimationCaptureSession::FImpl
 		Root->SetNumberField(TEXT("capture_wall_duration_s"),
 							 bRecording ? FPlatformTime::Seconds() - StartWall : CaptureWallSeconds);
 		Root->SetStringField(TEXT("image_export_mode"), TEXT("bounded_async_png"));
+		Root->SetStringField(TEXT("readback_mode"), Settings.bUseAsyncReadback ? TEXT("asynchronous") : TEXT("synchronous"));
+		Root->SetBoolField(TEXT("readback_diagnostic_resolution"), Settings.bUseAsyncReadback && Settings.bUseAsyncDiagnosticResolution);
+		if (Settings.bUseAsyncReadback)
+		{
+			Root->SetNumberField(TEXT("capture_pipeline_peak_frames"), PeakPendingFrames);
+			Root->SetNumberField(TEXT("capture_pipeline_peak_reserved_bytes"), double(PeakPipelineBytes));
+		}
+		if (Readback)
+		{
+			const auto Stats = Readback->GetStats();
+			Root->SetStringField(TEXT("readback_decoder"), FAnimationCaptureReadbackProducer::DecoderIdentity());
+			Root->SetNumberField(TEXT("readback_pending_requests"), Stats.PendingRequests);
+			Root->SetNumberField(TEXT("readback_peak_requests"), Stats.PeakPendingRequests);
+			Root->SetNumberField(TEXT("readback_peak_reserved_bytes"), double(Stats.PeakReservedBytes));
+			Root->SetNumberField(TEXT("readback_rejected"), double(Stats.Rejected));
+			Root->SetNumberField(TEXT("readback_cancelled"), double(Stats.Cancelled));
+			Root->SetNumberField(TEXT("readback_failed"), double(Stats.Failed));
+			Root->SetNumberField(TEXT("readback_timed_out"), double(Stats.TimedOut));
+			Root->SetNumberField(TEXT("readback_shutdown_wall_s"), Stats.ShutdownWallSeconds);
+		}
 		Root->SetNumberField(TEXT("image_flush_wall_s"), ImageFlushSeconds);
 		Root->SetNumberField(TEXT("image_queue_max_frames"), FAnimationCaptureImageWriter::MaxPendingFrames);
 		Root->SetNumberField(TEXT("image_queue_max_buffer_bytes"), FAnimationCaptureImageWriter::MaxPendingBytes);
@@ -687,11 +812,13 @@ bool FAnimationCaptureSession::Start(UWorld *World, const FAnimationCaptureSetti
 	S.Samples.Reset(Platform.OpenWrite(*(S.Directory / TEXT("samples.jsonl"))));
 	S.Frames.Reset(Platform.OpenWrite(*(S.Directory / TEXT("frames.jsonl"))));
 	S.Markers.Reset(Platform.OpenWrite(*(S.Directory / TEXT("markers.jsonl"))));
-	if (!S.Samples || !S.Frames || !S.Markers)
+	if (Settings.bUseAsyncReadback) { S.ReadbackEvents.Reset(Platform.OpenWrite(*(S.Directory / TEXT("readbacks.jsonl")))); }
+	if (!S.Samples || !S.Frames || !S.Markers || (Settings.bUseAsyncReadback && !S.ReadbackEvents))
 	{
 		S.Samples.Reset();
 		S.Frames.Reset();
 		S.Markers.Reset();
+		S.ReadbackEvents.Reset();
 		OutError = TEXT("Could not open capture streams");
 		return false;
 	}
@@ -700,6 +827,7 @@ bool FAnimationCaptureSession::Start(UWorld *World, const FAnimationCaptureSetti
 		S.Samples.Reset();
 		S.Frames.Reset();
 		S.Markers.Reset();
+		S.ReadbackEvents.Reset();
 		return false;
 	}
 	S.Extension = MoveTemp(Extension);
@@ -762,11 +890,13 @@ bool FAnimationCaptureSession::Stop(const FString &Reason, FString &OutError)
 	// Finish bounded outstanding writes before closing streams or publishing complete.
 	// No worker accesses the world, so teardown can safely use the same drain path.
 	const double FlushStart = FPlatformTime::Seconds();
+	if (S.Readback) { S.Readback->Shutdown(Reason == TEXT("world_cleanup")); }
 	S.CollectFrames(true);
 	S.ImageFlushSeconds = FPlatformTime::Seconds() - FlushStart;
 	S.Samples.Reset();
 	S.Frames.Reset();
 	S.Markers.Reset();
+	S.ReadbackEvents.Reset();
 	for (int32 I = 0; I < S.Participants.Num(); ++I)
 	{
 		if (S.Participants[I].Mesh.IsValid())

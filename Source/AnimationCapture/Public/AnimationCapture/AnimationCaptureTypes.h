@@ -25,6 +25,11 @@ struct ANIMATIONCAPTURE_API FAnimationCaptureSettings
 	FString OutputRoot;
 	double SampleHz = 60.0;
 	double FrameHz = 5.0;
+	/** Explicit opt-in: D3D11 single perspective view, no AA/scaling. Legacy synchronous default is unchanged. */
+	bool bUseAsyncReadback = false;
+	/** Async-only opt-in: force full resolution on the enrolled viewport while the session is active.
+	 * Does not disable AA; the caller must configure a supported view explicitly. */
+	bool bUseAsyncDiagnosticResolution = false;
 	double MaxWallSeconds = 60.0;
 	int32 MaxSamples = 7200;
 	int32 MaxFrames = 600;

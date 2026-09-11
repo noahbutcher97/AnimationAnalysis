@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -270,6 +271,98 @@ class HostToolsTests(unittest.TestCase):
         self.file("host/Saved/Observations/prior/frame.png", b"overwritten")
         with self.assertRaises(ValueError):
             verify_unreal_host._retain_observations(host, self.root / "bad-evidence", before=before)
+
+    def run_locked_retention_fixture(self, *, retained, permanent=False, cleanup_complete=True):
+        """Replace only external Unreal execution and the observed Windows open failure."""
+        import verify_unreal_host
+        source_file = None
+        permission_failures = 0
+        original_open = Path.open
+        output = self.root / "lock-verification"
+
+        def execute_fixture(arguments, cwd, evidence, log, timeout, records):
+            nonlocal source_file
+            record = {"arguments": [str(arg) for arg in arguments], "log": log,
+                      "status": "succeeded", "exit_code": 0}
+            records.append(record)
+            if log == "host-build.log":
+                return record
+            source_file = cwd / "Saved/Observations/FixtureRun/frames.jsonl"
+            source_file.parent.mkdir(parents=True, exist_ok=True)
+            source_file.write_bytes(b'{"index":1}\n')
+            record.update(status="timed_out", exit_code=1, error="Fixture editor timeout",
+                          tree_cleanup_complete=cleanup_complete)
+            self.tools.write_json(evidence / "host-commands.json", records)
+            raise self.tools.ProcessFailure(record)
+
+        def open_with_lock(path, mode="r", *args, **kwargs):
+            nonlocal permission_failures
+            if path == source_file and mode == "rb" and (permanent or permission_failures == 0):
+                permission_failures += 1
+                raise PermissionError(13, "Fixture Windows sharing lock", str(path))
+            return original_open(path, mode, *args, **kwargs)
+
+        with patch.object(verify_unreal_host, "run_process", side_effect=execute_fixture), patch.object(Path, "open", open_with_lock):
+            with self.assertRaises((RuntimeError, OSError)):
+                if retained:
+                    plugin = self.plugin()
+                    verify_unreal_host.prepare(self.root / "engine", output, plugin / "Saved/Host",
+                                               plugin=plugin, run_tests=True)
+                else:
+                    verify_unreal_host.verify(self.root / "engine", output)
+        report = json.loads((output / "host-verification.json").read_text())
+        if "scratch" in report:
+            scratch = Path(report["scratch"]).resolve()
+            self.assertEqual(scratch.parent, Path(tempfile.gettempdir()).resolve())
+            self.assertTrue(scratch.name.startswith("animation-capture-host-"))
+            if scratch.exists():
+                self.addCleanup(shutil.rmtree, scratch)
+        return report, output, source_file, permission_failures
+
+    def test_timeout_retention_recovers_transient_read_lock_without_upgrading_process(self):
+        report, output, source, failures = self.run_locked_retention_fixture(retained=True)
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(report["process_failure"]["status"], "timed_out")
+        self.assertNotIn("retention_error", report)
+        self.assertEqual(report.get("retention", {}).get("status"), "verified", "transient read lock was not recovered")
+        self.assertEqual(report["retention_reads"]["status"], "recovered")
+        attempts = report["retention_reads"]["attempts"]
+        self.assertEqual([entry["status"] for entry in attempts], ["permission_error", "succeeded"])
+        self.assertEqual(failures, 1)
+        self.assertTrue(source.is_file())
+        inventory = json.loads((output / "replay-inventory.json").read_text())
+        self.assertEqual(self.tools.verify_archive(output / "replay-evidence.zip", inventory)["verified_entries"], 1)
+        self.assertEqual(json.loads((output / "retention-attempts.json").read_text()), report["retention_reads"])
+
+    def test_permanent_retention_lock_is_bounded_and_preserves_temporary_root(self):
+        report, output, source, failures = self.run_locked_retention_fixture(retained=False, permanent=True)
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(report["process_failure"]["status"], "timed_out")
+        self.assertEqual(report["temporary_cleanup"], "preserved_for_recovery")
+        self.assertTrue(source.is_file())
+        self.assertIn("retention_reads", report, "retention attempts are not retained on failure")
+        self.assertEqual(report["retention_reads"]["status"], "failed")
+        self.assertEqual(failures, 4)
+        self.assertEqual(len(report["retention_reads"]["attempts"]), 4)
+        self.assertFalse((output / "replay-evidence.zip").exists())
+
+    def test_unconfirmed_process_cleanup_does_not_authorize_read_retries(self):
+        report, output, source, failures = self.run_locked_retention_fixture(retained=False, cleanup_complete=False)
+        self.assertEqual(report["temporary_cleanup"], "preserved_for_recovery")
+        self.assertTrue(source.is_file())
+        self.assertEqual(failures, 1)
+        self.assertIn("retention_reads", report, "retry eligibility is not recorded")
+        self.assertFalse(report["retention_reads"]["retry_eligible"])
+        self.assertEqual(report["retention_reads"]["max_attempts"], 1)
+
+    def test_default_rendered_arguments_cover_async_controls_without_profiling(self):
+        import verify_unreal_host
+        arguments = verify_unreal_host.editor_arguments(self.root, self.root / "host", self.root / "evidence", rendered=True)
+        selection = next(arg for arg in arguments if arg.startswith("-ExecCmds="))
+        self.assertIn("AnimationAnalysis.Capture.Async.SessionRGB", selection)
+        self.assertIn("AnimationAnalysis.Capture.Host.InteractiveCommands", selection)
+        self.assertIn("AnimationAnalysis.Capture.Rendered.ReadbackRGB10Bit", selection)
+        self.assertNotIn("Performance", selection)
 
 
 if __name__ == "__main__":

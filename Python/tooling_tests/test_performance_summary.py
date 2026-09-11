@@ -28,6 +28,17 @@ class PerformanceSummaryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'finite'):
             module.summarize(dict(samples=rows), repetitions=1, samples=2)
 
+    def test_failed_attempt_does_not_become_zero_completion_latency(self):
+        module = self.load()
+        rows = [dict(mode='asynchronous', repetition=0, sample=0, terminal_status='completed',
+                     frame_wall_s=.01, acquisition_wall_s=.001, completion_latency_s=.02),
+                dict(mode='asynchronous', repetition=0, sample=1, terminal_status='failed',
+                     frame_wall_s=.03, acquisition_wall_s=.001, completion_latency_s=None)]
+        report = module.summarize(dict(samples=rows), repetitions=1, samples=2)
+        self.assertFalse(report['comparison_eligible'])
+        self.assertEqual(report['runs'][0]['outcomes'], {'completed': 1, 'failed': 1})
+        self.assertEqual(report['runs'][0]['metrics']['completion_latency_ms']['p50'], 20)
+
 
 if __name__ == '__main__':
     unittest.main()

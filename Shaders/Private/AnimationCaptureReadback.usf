@@ -1,0 +1,43 @@
+#include "/Engine/Private/Common.ush"
+
+uint2 OutputSize;
+uint2 SourceOffset;
+uint RGBIs10Bit;
+Texture2D<float4> RGBTexture;
+RWStructuredBuffer<uint> RGBOutput;
+Texture2D<float> SceneDepthTexture;
+Texture2D<float> CustomDepthTexture;
+Texture2D<uint2> CustomStencilTexture;
+RWStructuredBuffer<uint4> DepthOutput;
+
+[numthreads(8, 8, 1)]
+void PackRGBCS(uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+	const uint2 Pixel = DispatchThreadId.xy;
+	if (any(Pixel >= OutputSize)) { return; }
+	// The SRV explicitly disables sRGB conversion. Preserve the source UNorm bytes.
+	const float3 Raw = saturate(RGBTexture.Load(int3(Pixel, 0)).rgb);
+	uint3 Color;
+	if (RGBIs10Bit != 0)
+	{
+		// RHISurfaceDataConversion.h -> FColor::Requantize10to8 (Color.h).
+		// Recover exact 10-bit UNorm values, then use the engine's integer rounding.
+		const uint3 Value10 = uint3(round(Raw * 1023.0));
+		const uint3 Temp = Value10 * 255u + 512u;
+		Color = (Temp + (Temp >> 10)) >> 10;
+	}
+	else { Color = uint3(round(Raw * 255.0)); }
+	RGBOutput[Pixel.y * OutputSize.x + Pixel.x] = Color.b | (Color.g << 8) | (Color.r << 16) | 0xff000000;
+}
+
+[numthreads(8, 8, 1)]
+void PackDepthCS(uint3 DispatchThreadId : SV_DispatchThreadID)
+{
+	const uint2 Pixel = DispatchThreadId.xy;
+	if (any(Pixel >= OutputSize)) { return; }
+	const uint2 SourcePixel = Pixel + SourceOffset;
+	const float SceneZ = SceneDepthTexture.Load(int3(SourcePixel, 0));
+	const float CustomZ = CustomDepthTexture.Load(int3(SourcePixel, 0));
+	const uint Stencil = CustomStencilTexture.Load(int3(SourcePixel, 0)) STENCIL_COMPONENT_SWIZZLE;
+	DepthOutput[Pixel.y * OutputSize.x + Pixel.x] = uint4(asuint(SceneZ), asuint(CustomZ), Stencil, 0);
+}
