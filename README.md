@@ -9,6 +9,10 @@ The foundation is independently buildable. The broader suite is still migrating;
 see [remaining ownership and work](docs/MIGRATION.md). Async GPU readback, moving
 skeletal surface sampling and mesh penetration are not implemented yet.
 
+Start the next implementation with the [development handoff](docs/DEVELOPMENT_HANDOFF.md):
+verified baseline, neutral rendered controls, asynchronous readback acceptance and
+consumer integration ownership.
+
 ## Verification
 
 ```powershell

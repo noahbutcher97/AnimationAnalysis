@@ -3,7 +3,8 @@
 Keep this suite independent of consuming games and local tooling. The Python core
 accepts explicit records, clocks, identities and criteria. Unreal-specific sampling
 lives in the AnimationCapture module; game classes, assets, skeleton defaults,
-profiles and assertions stay in consumer adapters. Read README.md and docs/MIGRATION.md.
+profiles and assertions stay in consumer adapters. Read README.md, docs/MIGRATION.md
+and docs/DEVELOPMENT_HANDOFF.md for the current delivery and integration boundary.
 
 Use purpose-based names. Never introduce private workflow gate names. Preserve
 acquisition versus completion identity and report insufficient evidence explicitly.
