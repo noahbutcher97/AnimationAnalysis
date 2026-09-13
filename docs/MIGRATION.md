@@ -7,21 +7,77 @@ no local AI setup or private workflow definitions to interpret them.
 
 Current layout: `Python/src/animation_analysis` owns portable contracts, geometry,
 raster/pixel review, integrity, identities, metrics and temporal services. `Source/AnimationCapture`
-owns the Unreal recorder, PNG writer and synchronous/asynchronous surface adapters. `Python/UnrealHost`
+owns the Unreal recorder, PNG writer, synchronous/asynchronous surface adapters and
+[CPU bone/rigid references](NATIVE_MESH_REFERENCE.md), [cached GPU bone sampling and
+shared admission](NATIVE_MESH_GPU.md). `Python/UnrealHost`
 owns neutral native tests. The old project paths below are compatibility or migration
 locations; shared implementations now have this repository as their source of truth.
+
+## Product direction and reference consumer
+
+The suite targets a broadly reusable, marketable product with robust surface
+observation and analysis. Plan for the most complete practical deformation coverage
+and let users explicitly select capabilities, fidelity and resource cost for their
+needs. Bone-skinned geometry is a useful candidate capability and correctness baseline;
+it does not define the product's final surface coverage.
+
+Priority clarified 2026-09-13: finish core analysis functionality before extending
+deformation fidelity. Mesh acquisition enables region-based surface measurements,
+sampled intersection, separately defined containment and interval reporting.
+Morphs, cloth and material deformation are stretch goals after those core workflows
+are usable and verified. Their absence must remain explicit in current results.
+The [deferral review](research/2026-09-13-deformation-deferral-review.md) qualifies
+that ordering: a required effect can block a selected workflow, and a targeted
+experiment may precede production support when it resolves a concrete contract risk.
+
+KatanaCombat is the accessible first consumer and a valuable reference project.
+Explore its actual assets, deformation features, workflows and analysis needs to
+ground requirements and test production usefulness. Combine those findings with a
+broader capability matrix and neutral controls. Katana's needs inform priorities;
+its current configuration does not bound the suite's supported use cases. Gameplay
+discovery, assets and project-specific assertions remain in consumer adapters.
+
+Capability selection must distinguish deformation coverage, spatial precision,
+sampling cadence, latency and resource budgets. Record requested and achieved
+coverage, including missing evidence and any explicitly accepted fallback. Lower
+cost must not silently weaken a requested result. Analysis acceptance criteria stay
+separate from acquisition fidelity; higher fidelity alone is not an artistic-quality
+or physical-contact verdict. Existing defaults remain compatible until an explicit
+API change is delivered and documented.
 
 ## Remaining order
 
 The first scoped readback delivery is documented in [delivery evidence](RENDERED_READBACK_DELIVERY.md)
 and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its owner.
 
-1. Moving skeletal surface sampling through the shared contracts.
-2. Explicit region/support and temporal surfaces; offline intersection/containment
-   with supported topology/deformation limits, then separate depth/volume/swept work.
+1. Moving skeletal surface sampling through the shared contracts. The
+   [source investigation and neutral experiment](research/2026-09-11-skeletal-surface-sampling.md)
+   establish a CPU bone-skinned reference and a narrow cached GPU feasibility result.
+   The [capability and fidelity design](SURFACE_CAPABILITIES.md) now proposes the
+   production slice and acceptance criteria, informed by the
+   [Katana source assessment](research/2026-09-11-katana-surface-requirements.md).
+   The [animated readiness follow-up](research/2026-09-11-animated-surface-readiness.md)
+   adds real animation, rigid attachment, delayed geometry/raster controls and loaded
+   asset findings. The [portable record/replay slice](MESH_RECORD_DELIVERY.md) is
+   implemented in Python 0.3.0. CPU/rigid and bounded GPU bone producers now have
+   [native qualification evidence](NATIVE_MESH_GPU_DELIVERY.md). Preserve explicit
+   unsupported coverage. Katana's effective live component inventory remains a
+   prerequisite to consumer adequacy claims. Qualify additional pose acquisition
+   only where it blocks a selected core workflow; broader deformation is deferred.
+2. [Explicit regions, offline surface distance, sampled intersection and interval/gap
+   reporting](MESH_ANALYSIS.md) are implemented in Python 0.4.0; see the
+   [qualification results](MESH_ANALYSIS_DELIVERY.md). Obtain consumer-owned evidence
+   for the selected regions, criteria and acquisition coverage. Containment remains
+   explicitly not evaluated. Containment, support/sliding, penetration depth, volume
+   and swept analysis require their own scoped definitions and controls.
 3. Move remaining generic paired evaluation/preview calculations and offline stream,
    report, launcher and retention mechanisms out of consumer implementations.
 4. Keep Katana finisher/counter integrations and a neutral host exercising the same APIs.
+5. After core functionality, qualify opt-in morph, cloth and material-deformation
+   extensions for higher fidelity and broader use. They are not prerequisites to
+   the initial analysis algorithms on supported geometry. Reassess at the first
+   usable analysis slice with consumer evidence; a required unsupported effect
+   blocks that workflow's adequacy claim.
 
 ## Whole-suite inventory carried from the consumer
 

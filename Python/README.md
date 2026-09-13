@@ -38,12 +38,34 @@ Canonical visual evidence uses `schema_version: 2` and frames with unique `file`
 
 `surfaces.measure_surface_relation` and `pixel_alignment.analyze_segment` accept explicit raster data and criteria. Images are decoded through the optional `images` module. Pixel/depth measurements and authored review records are separate from physical-contact or artistic acceptance. Passing a control establishes only the conditions it exercised.
 
+Python 0.4.0 adds `MeshRegion`, `MeshSelection`, `MeshPairSample`,
+`MeshAnalysisLimits` and `measure_mesh_pair` for bounded offline surface distance
+and sampled intersection using existing mesh records and explicit coverage
+requirements. `summarize_mesh_interval` preserves acquisition gaps and failed
+samples; it never infers continuous contact. Results retain both original input
+identities and achieved coverage, with detached JSON-compatible `to_mapping()`
+output. Native capture and mesh replay schema 1 remain compatible.
+
+Region ordinals refer to complete triangles in a specific topology. The exact
+rational reference distinguishes intersection from tolerance-based proximity;
+missing required deformation and exhausted work remain insufficient. Containment,
+penetration depth and swept intersection are not evaluated. All geometry, units,
+clocks, region mappings and requirements are explicit caller inputs.
+
 Shared offline services are available in version 0.2.0:
 
 - `integrity`: strict JSON/JSONL and finite numeric input, contained paths, RGB/RGBA PNG checks including CRCs and bounded decompressed scanlines. These checks need no image extra. Embedded visual evidence retains its separate signature/hash validation contract.
 - `artifacts`: SHA256, canonical JSON identity, explicitly selected file manifests and atomic UTF-8/JSON replacement. Manifests use relative paths and reject escape/duplicate entries. `implementation_manifest()` identifies installed package Python sources; callers also identify external backends, profiles and producer code. Atomicity is per file; multi-file jobs retain their pending-state protocol.
 - `metrics`: finite numeric summaries and nested deltas, plus explicit status precedence. The caller selects compatible metrics, units and thresholds. Boolean flags are not numeric observations. A pass applies only to executed cases; consumers must retain the complete case list.
 - `temporal`: clock-declared `TimeInterval`, unique named event windows and complete observation bracketing. Callers translate their own records into `ClockStamp`; missing coverage, unrelated clocks and unordered observations reject. Duplicate acquisition times remain available for the caller's identity/cadence checks.
+
+Version **0.3.0** adds `mesh_records` and `mesh_replay`: immutable component/topology
+and acquisition identities, explicit feature eligibility, bounded binary replay and
+exclusive bundle publication. Their public types/functions are also exported from
+`animation_analysis`. Supply caller limits, units, coordinates and producer coverage;
+no component discovery or native skeletal sampling is implied. The separate mesh
+schema is version 1; existing visual/motion/RGB/depth formats remain compatible.
+See [mesh contracts, binary layout and runnable example](../docs/MESH_OBSERVATIONS.md).
 
 ```python
 from animation_analysis.temporal import TimeInterval, bracket_observations

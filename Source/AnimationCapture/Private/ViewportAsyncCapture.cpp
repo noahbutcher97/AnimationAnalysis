@@ -128,9 +128,11 @@ struct FViewportAsyncCapture::FImpl
 	FDelegateHandle DrawHandle, CleanupHandle;
 	bool bClosed = false;
 	uint64 PreflightRejected = 0;
-	FImpl(UWorld* InWorld, FViewport* InViewport, bool Diagnostic, const FAnimationCaptureReadbackLimits& Limits)
+	FImpl(UWorld* InWorld, FViewport* InViewport, bool Diagnostic, const FAnimationCaptureReadbackLimits& Limits,
+		TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget)
 		: World(InWorld), Client(InWorld ? InWorld->GetGameViewport() : nullptr), Viewport(InViewport),
-		InitialSize(InViewport ? InViewport->GetRenderTargetTextureSizeXY() : FIntPoint::ZeroValue), Producer(Limits)
+		InitialSize(InViewport ? InViewport->GetRenderTargetTextureSizeXY() : FIntPoint::ZeroValue),
+		Producer(Limits, MoveTemp(SharedBudget))
 	{
 		if (InWorld && InViewport)
 		{
@@ -178,7 +180,8 @@ struct FViewportAsyncCapture::FImpl
 };
 
 FViewportAsyncCapture::FViewportAsyncCapture(UWorld* World, FViewport* Viewport, bool Diagnostic,
-	const FAnimationCaptureReadbackLimits& Limits) : Impl(MakeUnique<FImpl>(World, Viewport, Diagnostic, Limits)) {}
+	const FAnimationCaptureReadbackLimits& Limits, TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget)
+	: Impl(MakeUnique<FImpl>(World, Viewport, Diagnostic, Limits, MoveTemp(SharedBudget))) {}
 FViewportAsyncCapture::~FViewportAsyncCapture() { Shutdown(); }
 bool FViewportAsyncCapture::Request(const FAnimationCaptureReadbackRequest& Request, FAnimationCaptureReadbackTicket& Ticket, FString& Error)
 {

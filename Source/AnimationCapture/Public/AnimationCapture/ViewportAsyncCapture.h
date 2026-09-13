@@ -20,7 +20,8 @@ class ANIMATIONCAPTURE_API FViewportAsyncCapture
 {
 public:
 	FViewportAsyncCapture(UWorld* World, FViewport* Viewport, bool bDiagnosticResolution = false,
-		const FAnimationCaptureReadbackLimits& Limits = {});
+		const FAnimationCaptureReadbackLimits& Limits = {},
+		TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget = nullptr);
 	~FViewportAsyncCapture();
 	bool Request(const FAnimationCaptureReadbackRequest& Request, FAnimationCaptureReadbackTicket& Ticket, FString& Error);
 	bool CaptureRGB(const FAnimationCaptureReadbackRequest& Request, FAnimationCaptureReadbackTicket& Ticket, FString& Error);

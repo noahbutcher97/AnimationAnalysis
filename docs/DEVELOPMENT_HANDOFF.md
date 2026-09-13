@@ -1,11 +1,21 @@
 # Shared suite development handoff
 
-Recorded 2026-09-11. Read [repository instructions](../AGENTS.md), the
+Updated 2026-09-13. Read [repository instructions](../AGENTS.md), the
 [API and verification guide](../README.md), then [whole-suite migration](MIGRATION.md).
 This document records the accepted first-delivery scope and consumer integration
 boundary. Current implementation, commands and results are in
 [delivery evidence](RENDERED_READBACK_DELIVERY.md), [host workflow](HOST_WORKFLOW.md)
 and [asynchronous API compatibility](ASYNC_READBACK.md).
+
+The next implemented slice is [native CPU bone/rigid reference sampling](NATIVE_MESH_REFERENCE.md).
+Its [delivery report](NATIVE_MESH_REFERENCE_DELIVERY.md) records verification and limits.
+The next slice, [bounded GPU bone sampling and shared image/mesh admission](NATIVE_MESH_GPU.md),
+is implemented; its [delivery report](NATIVE_MESH_GPU_DELIVERY.md) gives exact
+tests, performance and archived replay. Python 0.4.0 now implements
+[sampled mesh surface analysis](MESH_ANALYSIS.md); its
+[delivery report](MESH_ANALYSIS_DELIVERY.md) separates fresh offline qualification
+from historical native evidence. Katana's
+owner retains consumer edits, dependency pins, rebuilds and gameplay verification.
 
 ## Verified starting point
 
@@ -24,6 +34,54 @@ These are recorded results, not tests rerun for this documentation commit.
 Reproduction commands are in the README. The original verifier used NullRHI only;
 the first delivery adds `--rendered`, retained prepare/launch, and explicit readback
 performance controls. Consult the delivery report for the new standalone results.
+
+The next delivery now has a [skeletal sampling research report](research/2026-09-11-skeletal-surface-sampling.md).
+It records UE 5.6 source findings, a neutral CPU/GPU geometry experiment, repeated
+measurements, retained replay evidence and the remaining contract/lifetime work.
+Its prototype remains research evidence. The separate native reference API now
+qualifies a narrow subset; no consumer dependency change is part of that delivery.
+
+Product direction is recorded in [migration and reference-consumer guidance](MIGRATION.md#product-direction-and-reference-consumer).
+Target broad, robust capabilities with explicit user choices for fidelity and cost.
+Use Katana's accessible workflows and assets to inform requirements and first-consumer
+validation, alongside broader capability coverage and neutral fixtures. The bone-only
+experiment is a baseline, not evidence that the product's surface requirements are met.
+
+The [surface capability design](SURFACE_CAPABILITIES.md) now records the broader
+coverage matrix, independent user choices, proposed first production slice and
+qualification criteria. Its [Katana assessment](research/2026-09-11-katana-surface-requirements.md)
+uses a hashed working-tree snapshot, including the owner's integration report for
+`3fd91eb`. This is documentation/source evidence; no consumer tests were rerun.
+Body/weapon surfaces, authored/live provenance and combined budgets are concrete
+needs. The [focused readiness checks](research/2026-09-11-animated-surface-readiness.md)
+now load the selected assets: no stored morph/clothing/default-deformer/post-process
+assignments, but masked materials and connected pixel-depth offset. They also pass
+real-animation, rigid-attachment, delayed-readback and matching-raster probe controls,
+with a source-supported Skin Cache setup-ordering mitigation for UE 5.6.1.
+Runtime component/material overrides and complete production acceptance remain open.
+
+The [mesh record/replay slice](MESH_RECORD_DELIVERY.md) is now implemented in Python
+0.3.0: immutable geometry and request identities, explicit coverage eligibility and
+bounded replay with exclusive publication. Its [contract guide](MESH_OBSERVATIONS.md)
+and [completed plan](superpowers/plans/2026-09-11-mesh-observation-records.md) define the
+native producer's wire contract. The CPU/rigid reference and conservative effective
+inventory and bounded GPU/shared-budget slice are implemented. The first core mesh
+analysis slice now provides topology-bound regions, surface distance, sampled
+intersection and interval/gap reporting. Containment remains explicitly not evaluated.
+Next obtain consumer-owned integration evidence alongside the neutral controls:
+select useful region pairs and criteria, inventory their required surface coverage,
+and qualify additional live pose acquisition only where it blocks that workflow.
+
+Priority clarified 2026-09-13: morphs, cloth and material deformation are stretch
+goals after core functionality, offering optional higher fidelity and broader use.
+The [deferral review](research/2026-09-13-deformation-deferral-review.md) makes this
+ordering conditional on the selected workflow's required surface and live pose
+support. An early experiment needs a concrete coverage or contract question;
+defer production extensions without deferring that assessment. Reassess at the
+first usable analysis slice with consumer evidence. Keep omitted coverage
+explicitly unsupported or unknown where appropriate. No further broad
+tool audit is needed. No engine patch or consumer dependency update is included
+in either native delivery.
 
 ## Development host and production integration
 

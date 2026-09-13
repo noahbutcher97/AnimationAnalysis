@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Noah Butcher. All Rights Reserved.
 #include "AnimationCapture/AnimationCaptureSession.h"
 #include "AnimationCapture/AnimationCaptureJson.h"
 #include "AnimationCapture/AnimationCaptureImageWriter.h"
@@ -457,7 +457,8 @@ struct FAnimationCaptureSession::FImpl
 		if (Settings.bUseAsyncReadback && !Readback)
 		{
 			// Enroll before the next renderer view; this draw cannot supply a witness retroactively.
-			Readback = MakeUnique<FViewportAsyncCapture>(World.Get(), Viewport, Settings.bUseAsyncDiagnosticResolution); return;
+			Readback = MakeUnique<FViewportAsyncCapture>(World.Get(), Viewport, Settings.bUseAsyncDiagnosticResolution,
+				FAnimationCaptureReadbackLimits{}, Settings.SharedBudget); return;
 		}
 		++DrawCount;
 		const bool bResourcesReady = FAssetCompilingManager::Get().GetNumRemainingAssets() == 0 &&
@@ -508,6 +509,16 @@ struct FAnimationCaptureSession::FImpl
 			bDataLimit = true;
 			Error(TEXT("Insufficient data budget for next viewport frame"));
 			return;
+		}
+		TSharedPtr<FAnimationCaptureReservation, ESPMode::ThreadSafe> SynchronousPixels;
+		if (!Settings.bUseAsyncReadback && Settings.SharedBudget)
+		{
+			SynchronousPixels = Settings.SharedBudget->Reserve(int64(Size.X) * Size.Y * 4);
+			if (!SynchronousPixels)
+			{
+				++RejectedFrames; Error(TEXT("Shared capture budget exhausted before synchronous viewport readback"));
+				FString Unused; Owner->Stop(TEXT("image_queue_limit_reached"), Unused); return;
+			}
 		}
 		TArray<FColor> Pixels;
 		// Timestamp the observed viewport, before readback and worker latency. Pose
@@ -796,6 +807,11 @@ bool FAnimationCaptureSession::Start(UWorld *World, const FAnimationCaptureSetti
 	FImpl &S = *Impl;
 	S.World = World;
 	S.Settings = Settings;
+	if (!S.ImageWriter.SetSharedBudget(Settings.SharedBudget))
+	{
+		OutError = TEXT("Image writer budget cannot change while work is queued");
+		return false;
+	}
 	S.Participants = TArray<FAnimationCaptureSubject>(Participants);
 	S.Poses.SetNum(Participants.Num());
 	S.StartedUtc = FDateTime::UtcNow().ToIso8601();

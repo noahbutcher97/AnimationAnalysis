@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Noah Butcher. All Rights Reserved.
 #include "AnimationCapture/AnimationCaptureImageWriter.h"
 #include "Async/Async.h"
 #include "ImageCore.h"
@@ -12,13 +12,19 @@ struct FAnimationCaptureImageWriter::FImpl
 	{
 		TFuture<FResult> Future;
 		int64 FileBytes = 0, MemoryBytes = 0;
+		TSharedPtr<FAnimationCaptureReservation, ESPMode::ThreadSafe> SharedBudgetReservation;
 	};
 	TArray<FPending> Pending;
 	int64 ReservedFileBytes = 0, ReservedMemoryBytes = 0;
 	IImageWrapperModule* Encoder = nullptr;
+	TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget;
 };
 
-FAnimationCaptureImageWriter::FAnimationCaptureImageWriter() : Impl(MakeUnique<FImpl>()) {}
+FAnimationCaptureImageWriter::FAnimationCaptureImageWriter(
+	TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget) : Impl(MakeUnique<FImpl>())
+{
+	Impl->SharedBudget = MoveTemp(SharedBudget);
+}
 FAnimationCaptureImageWriter::~FAnimationCaptureImageWriter()
 {
 	FResult Unused;
@@ -58,13 +64,21 @@ bool FAnimationCaptureImageWriter::Enqueue(const FString& File, FIntPoint Size, 
 	{
 		OutError = TEXT("PNG pixel count does not match viewport dimensions"); return false;
 	}
+	const int64 FileBytes = FileByteReservation(Size);
+	const int64 MemoryBytes = FileBytes + static_cast<int64>(Size.X) * Size.Y * 4;
+	TSharedPtr<FAnimationCaptureReservation, ESPMode::ThreadSafe> SharedReservation;
+	if (Impl->SharedBudget && !(SharedReservation = Impl->SharedBudget->Reserve(MemoryBytes)))
+	{
+		OutError = TEXT("Shared capture budget exhausted before PNG encoding");
+		return false;
+	}
 	// Module loading is restricted to the game thread. Compression uses independent
 	// wrapper instances; the queued work is drained before the owning module unloads.
 	if (!Impl->Encoder) { Impl->Encoder = &FModuleManager::LoadModuleChecked<IImageWrapperModule>(TEXT("ImageWrapper")); }
-	const int64 FileBytes = FileByteReservation(Size);
 	auto& Pending = Impl->Pending.AddDefaulted_GetRef();
 	Pending.FileBytes = FileBytes;
-	Pending.MemoryBytes = FileBytes + static_cast<int64>(Size.X) * Size.Y * 4;
+	Pending.MemoryBytes = MemoryBytes;
+	Pending.SharedBudgetReservation = MoveTemp(SharedReservation);
 	Impl->ReservedFileBytes += Pending.FileBytes;
 	Impl->ReservedMemoryBytes += Pending.MemoryBytes;
 	Pending.Future = Async(EAsyncExecution::ThreadPool,
@@ -102,3 +116,11 @@ bool FAnimationCaptureImageWriter::Collect(FResult& OutResult, bool bWait)
 
 int32 FAnimationCaptureImageWriter::GetPendingCount() const { return Impl->Pending.Num(); }
 int64 FAnimationCaptureImageWriter::GetReservedFileBytes() const { return Impl->ReservedFileBytes; }
+
+bool FAnimationCaptureImageWriter::SetSharedBudget(TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget)
+{
+	check(IsInGameThread());
+	if (!Impl->Pending.IsEmpty()) { return false; }
+	Impl->SharedBudget = MoveTemp(SharedBudget);
+	return true;
+}

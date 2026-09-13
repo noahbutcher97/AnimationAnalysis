@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Noah Butcher. All Rights Reserved.
 #include "AnimationCapture/ViewportSurfaceCapture.h"
 #include "Components/PrimitiveComponent.h"
 #include "Engine/World.h"

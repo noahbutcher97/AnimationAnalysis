@@ -22,8 +22,8 @@ policy. Run rendered checks when other editor/GPU workloads are idle.
 
 | Mode | Exact expected automation results |
 | --- | --- |
-| NullRHI | Five `AnimationAnalysis.Capture.Portability` controls: `IndependentSessions`, `ExtensionIntegrity`, `ReadbackAdmission`, `ReadbackByteLimit`, `ReadbackTimeout` |
-| Rendered | All five above, two `Surfaces` controls, two `Rendered` RGB decoder controls, six `Async` geometry/lifecycle/session controls, and `Host.InteractiveCommands` (sixteen total) |
+| NullRHI | Seven `Portability` controls, including shared image/PNG budgets, plus `MeshReplay.PythonCanonicalTopology` (eight total) |
+| Rendered | All eight above, two `Surfaces`, two `Rendered` RGB decoders, six `Async`, `Host.InteractiveCommands`, and four mesh reference/cached-position/lifecycle controls (23 total) |
 
 Every expected test must complete exactly once with `Success`. Missing, duplicate,
 unexpected or failed results fail verification. A rendered run also needs an
@@ -38,6 +38,7 @@ names; it is not a prefix filter. Performance controls are deliberately explicit
 ```powershell
 python Python/verify_unreal_host.py --engine "C:/Program Files/Epic Games/UE_5.6" --output Saved/HostChecks/performance-01 --rendered --test AnimationAnalysis.Capture.Surfaces.Performance
 python Python/verify_unreal_host.py --engine "C:/Program Files/Epic Games/UE_5.6" --output Saved/HostChecks/comparison-01 --rendered --test AnimationAnalysis.Capture.Performance.ReadbackComparison
+python Python/verify_unreal_host.py --engine "C:/Program Files/Epic Games/UE_5.6" --output Saved/HostChecks/mesh-comparison-01 --rendered --test AnimationAnalysis.Capture.Mesh.GPUCombined
 ```
 
 Use the same option for additional implemented controls. Selecting a test does
@@ -46,6 +47,14 @@ not imply that other capabilities were verified. `--build-timeout` defaults to
 process tree and retains the command, deadline, elapsed time, exit/cleanup result
 and logs. If tree cleanup or replay retention cannot be confirmed, the temporary
 host is preserved for recovery and verification fails.
+
+The host compiles Skin Cache shader support in its own `Config/DefaultEngine.ini`;
+individual skeletal fixtures opt in. This configuration never enters the plugin
+or a consuming game. Builds disable IDE hot reload and use two compiler processes
+to limit memory pressure. Unchanged staged files preserve incremental build inputs.
+Close this retained host before rebuilding it. `Mesh.CachedPositions` is a complete
+control name; Unreal itself uses prefix filters, and the verifier rejects any
+unexpected results rather than treating a broader run as the requested selection.
 
 The comparison rotates disabled/synchronous/asynchronous order over three repetitions,
 each with 60 warmup draws and 120 measured attempts. All modes use the same full-resolution
