@@ -311,12 +311,75 @@ class NeutralAssemblyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             example.evaluate_run(self.root, self.criteria_path)
 
+    def test_two_sample_profile_cannot_self_authorize_verification(self):
+        example = load_example(self)
+        manifest = copy.deepcopy(self.manifest)
+        manifest["samples"] = manifest["samples"][:2]
+        (self.root / "assembly.json").write_text(json.dumps(manifest), encoding="utf-8")
+        value = criteria()
+        value["expected_samples"] = value["expected_samples"][:2]
+        self.criteria_path.write_text(json.dumps(value), encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "expected_samples"):
+            example.evaluate_run(self.root, self.criteria_path)
+        output = self.root / "shortcut-report.json"
+        with contextlib.redirect_stderr(io.StringIO()) as errors:
+            code = example.main(["--observations", str(self.root),
+                                 "--criteria", str(self.criteria_path),
+                                 "--output", str(output)])
+        self.assertEqual(code, 2)
+        self.assertIn("expected_samples", errors.getvalue())
+        self.assertFalse(output.exists())
+
+    def test_fixed_profile_rejects_altered_qualification_semantics(self):
+        example = load_example(self)
+
+        def set_nested(section, name, value):
+            return lambda data: data[section].__setitem__(name, value)
+
+        cases = (
+            ("units", lambda data: data.__setitem__("units", "metres")),
+            ("coordinate_system", lambda data: data.__setitem__("coordinate_system", "other")),
+            ("vector_convention", lambda data: data.__setitem__("vector_convention", "column")),
+            ("required_features", lambda data: data.__setitem__("required_features", ["rigid"])),
+            ("known_features", lambda data: data["known_features"].append("invented")),
+            ("allowed_exclusions", lambda data: data["allowed_exclusions"].remove("cloth")),
+            ("allowed_producers", lambda data: data["allowed_producers"].append("synthetic-v1")),
+            ("record_limits", set_nested("record_limits", "max_vertices", 63)),
+            ("analysis_limits", set_nested("analysis_limits", "max_pair_tests", 255)),
+            ("max_samples", lambda data: data.__setitem__("max_samples", 7)),
+            ("max_gap_seconds", lambda data: data.__setitem__("max_gap_seconds", 2.0)),
+            ("tolerance", lambda data: data.__setitem__("tolerance", 1.0)),
+            ("expected_samples", lambda data: data["expected_samples"][0].__setitem__("distance", 41)),
+        )
+        for label, mutate in cases:
+            with self.subTest(label=label):
+                value = criteria()
+                mutate(value)
+                self.criteria_path.write_text(json.dumps(value), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, label):
+                    example.evaluate_run(self.root, self.criteria_path)
+
+    def test_canonical_profile_is_semantic_not_json_byte_locked(self):
+        example = load_example(self)
+        value = criteria()
+        for name in ("required_features", "known_features", "allowed_exclusions",
+                     "allowed_producers"):
+            value[name].reverse()
+        self.criteria_path.write_text(json.dumps(value, indent=4, sort_keys=True), encoding="utf-8")
+
+        report = example.evaluate_run(self.root, self.criteria_path)
+
+        self.assertEqual(report["status"], "verified")
+        self.assertNotEqual(report["source_hashes"]["criteria"],
+                            hashlib.sha256(json.dumps(criteria()).encode()).hexdigest())
+
     def test_cli_exclusively_writes_reports_and_returns_nonzero_on_failure(self):
         example = load_example(self)
         output = self.root / "report.json"
-        bad = criteria()
-        bad["expected_samples"][0]["distance"] = 41
-        self.criteria_path.write_text(json.dumps(bad), encoding="utf-8")
+        manifest = copy.deepcopy(self.manifest)
+        manifest["controls"]["checks_passed"] = False
+        (self.root / "assembly.json").write_text(json.dumps(manifest), encoding="utf-8")
         arguments = ["--observations", str(self.root), "--criteria", str(self.criteria_path),
                      "--output", str(output)]
 

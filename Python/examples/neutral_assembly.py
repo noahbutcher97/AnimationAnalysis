@@ -41,6 +41,18 @@ ANALYSIS_CAPS = {
     "max_node_visits": 1024,
     "max_coordinate_bits": 256,
 }
+FIXED_REQUIRED_FEATURES = frozenset(("rigid", "pose_ordering"))
+FIXED_EXCLUSIONS = frozenset((
+    "morph", "cloth", "mesh_deformer", "material_displacement", "raster_visibility"))
+FIXED_KNOWN_FEATURES = FIXED_REQUIRED_FEATURES | FIXED_EXCLUSIONS
+FIXED_PRODUCERS = frozenset(("unreal-rigid-reference-v1",))
+FIXED_EXPECTATIONS = (
+    ("step-00", 40, False),
+    ("step-01", 10, False),
+    ("step-02", 0, True),
+    ("step-03", 0, True),
+    ("step-04", 40, False),
+)
 CRITERIA_FIELDS = {
     "format", "schema_version", "units", "coordinate_system", "vector_convention",
     "required_features", "known_features", "allowed_exclusions", "allowed_producers",
@@ -149,6 +161,12 @@ def _limits(value, caps, label):
     return result
 
 
+def _fixed_profile(name, observed, expected):
+    if observed != expected:
+        raise ValueError(
+            f"Neutral assembly criteria {name} must match the fixed qualification profile")
+
+
 def _validate_criteria(value):
     value = _mapping(value, CRITERIA_FIELDS, "criteria")
     if (value["format"] != "neutral_assembly_criteria"
@@ -184,6 +202,22 @@ def _validate_criteria(value):
         _number(row["distance"], "expected distance", 0)
         if type(row["intersection"]) is not bool:
             raise ValueError("Expected intersection must be boolean")
+    _fixed_profile("units", value["units"], "centimetres")
+    _fixed_profile("coordinate_system", value["coordinate_system"],
+                   "unreal-left-handed-z-up")
+    _fixed_profile("vector_convention", value["vector_convention"], "row")
+    _fixed_profile("required_features", frozenset(required), FIXED_REQUIRED_FEATURES)
+    _fixed_profile("known_features", frozenset(known), FIXED_KNOWN_FEATURES)
+    _fixed_profile("allowed_exclusions", frozenset(exclusions), FIXED_EXCLUSIONS)
+    _fixed_profile("allowed_producers", frozenset(producers), FIXED_PRODUCERS)
+    _fixed_profile("record_limits", record, RECORD_CAPS)
+    _fixed_profile("analysis_limits", analysis, ANALYSIS_CAPS)
+    _fixed_profile("max_samples", max_samples, 8)
+    _fixed_profile("max_gap_seconds", gap, 1.0)
+    _fixed_profile("tolerance", tolerance, 0.0)
+    outcomes = tuple((row["sample_id"], row["distance"], row["intersection"])
+                     for row in expected)
+    _fixed_profile("expected_samples", outcomes, FIXED_EXPECTATIONS)
     return dict(value, required_features=required, known_features=known,
                 allowed_exclusions=exclusions, allowed_producers=producers,
                 record_limits=record, analysis_limits=analysis)
