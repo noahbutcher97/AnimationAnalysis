@@ -395,7 +395,9 @@ private:
 		Record(Test->TestEqual(TEXT("Fixed subject is literal"), Pair[0]->Data().Enrollment.SubjectId, FString(TEXT("fixed-part"))));
 		Record(Test->TestEqual(TEXT("Moving subject is literal"), Pair[1]->Data().Enrollment.SubjectId, FString(TEXT("moving-part"))));
 		Record(Test->TestEqual(TEXT("Assembly stream is literal"), Pair[0]->Data().Enrollment.StreamId, FString(TEXT("assembly"))));
+		Record(Test->TestEqual(TEXT("Engine cube has 24 vertices"), Pair[0]->Data().Positions.Num(), 24));
 		Record(Test->TestEqual(TEXT("Engine cube has 12 triangles"), Pair[0]->Data().Indices.Num(), 36));
+		Record(Test->TestEqual(TEXT("Moving engine cube has 24 vertices"), Pair[1]->Data().Positions.Num(), 24));
 		Record(Test->TestEqual(TEXT("Moving engine cube has 12 triangles"), Pair[1]->Data().Indices.Num(), 36));
 		Record(Test->TestTrue(TEXT("Fixed transform is frozen at exact fixture scale and center"),
 			Pair[0]->Data().ComponentToWorld.Equals(
@@ -405,17 +407,40 @@ private:
 				FTransform(FRotator::ZeroRotator, FVector(XPositions[SampleIndex], 0, 10000), FVector(AssemblyCubeScale)).ToMatrixWithScale(), 1.e-8)));
 		for (const auto& Snapshot : Pair)
 		{
-			double LocalAbsMax = 0;
-			double WorldOffsetAbsMax = 0;
+			FVector3d LocalMin(TNumericLimits<double>::Max());
+			FVector3d LocalMax(TNumericLimits<double>::Lowest());
+			FVector3d WorldOffsetMin(TNumericLimits<double>::Max());
+			FVector3d WorldOffsetMax(TNumericLimits<double>::Lowest());
 			const FVector3d Center = FVector3d(Snapshot->Data().ComponentToWorld.GetOrigin());
 			for (const auto& Position : Snapshot->Data().Positions)
 			{
-				LocalAbsMax = FMath::Max(LocalAbsMax, Position.GetAbsMax());
-				WorldOffsetAbsMax = FMath::Max(WorldOffsetAbsMax,
-					(FVector3d(Snapshot->Data().ComponentToWorld.TransformPosition(FVector(Position))) - Center).GetAbsMax());
+				LocalMin.X = FMath::Min(LocalMin.X, Position.X);
+				LocalMin.Y = FMath::Min(LocalMin.Y, Position.Y);
+				LocalMin.Z = FMath::Min(LocalMin.Z, Position.Z);
+				LocalMax.X = FMath::Max(LocalMax.X, Position.X);
+				LocalMax.Y = FMath::Max(LocalMax.Y, Position.Y);
+				LocalMax.Z = FMath::Max(LocalMax.Z, Position.Z);
+				const FVector3d Offset = FVector3d(
+					Snapshot->Data().ComponentToWorld.TransformPosition(FVector(Position))) - Center;
+				WorldOffsetMin.X = FMath::Min(WorldOffsetMin.X, Offset.X);
+				WorldOffsetMin.Y = FMath::Min(WorldOffsetMin.Y, Offset.Y);
+				WorldOffsetMin.Z = FMath::Min(WorldOffsetMin.Z, Offset.Z);
+				WorldOffsetMax.X = FMath::Max(WorldOffsetMax.X, Offset.X);
+				WorldOffsetMax.Y = FMath::Max(WorldOffsetMax.Y, Offset.Y);
+				WorldOffsetMax.Z = FMath::Max(WorldOffsetMax.Z, Offset.Z);
 			}
-			Record(Test->TestTrue(TEXT("Engine cube source extent is exactly 128 cm"), FMath::Abs(LocalAbsMax - 128.0) <= .001));
-			Record(Test->TestTrue(TEXT("Scaled fixture extent is exactly 50 cm"), FMath::Abs(WorldOffsetAbsMax - 50.0) <= .001));
+			Record(Test->TestTrue(TEXT("Engine cube local minimum X is exactly -128 cm"), LocalMin.X == -128.0));
+			Record(Test->TestTrue(TEXT("Engine cube local minimum Y is exactly -128 cm"), LocalMin.Y == -128.0));
+			Record(Test->TestTrue(TEXT("Engine cube local minimum Z is exactly -128 cm"), LocalMin.Z == -128.0));
+			Record(Test->TestTrue(TEXT("Engine cube local maximum X is exactly 128 cm"), LocalMax.X == 128.0));
+			Record(Test->TestTrue(TEXT("Engine cube local maximum Y is exactly 128 cm"), LocalMax.Y == 128.0));
+			Record(Test->TestTrue(TEXT("Engine cube local maximum Z is exactly 128 cm"), LocalMax.Z == 128.0));
+			Record(Test->TestTrue(TEXT("Scaled fixture offset minimum X is exactly -50 cm"), WorldOffsetMin.X == -50.0));
+			Record(Test->TestTrue(TEXT("Scaled fixture offset minimum Y is exactly -50 cm"), WorldOffsetMin.Y == -50.0));
+			Record(Test->TestTrue(TEXT("Scaled fixture offset minimum Z is exactly -50 cm"), WorldOffsetMin.Z == -50.0));
+			Record(Test->TestTrue(TEXT("Scaled fixture offset maximum X is exactly 50 cm"), WorldOffsetMax.X == 50.0));
+			Record(Test->TestTrue(TEXT("Scaled fixture offset maximum Y is exactly 50 cm"), WorldOffsetMax.Y == 50.0));
+			Record(Test->TestTrue(TEXT("Scaled fixture offset maximum Z is exactly 50 cm"), WorldOffsetMax.Z == 50.0));
 		}
 
 		const FString FixedBundle = SampleId + TEXT("-fixed");
