@@ -97,7 +97,7 @@ capability docs. Create `docs/MESH_ANALYSIS.md`, `docs/MESH_ANALYSIS_DELIVERY.md
 - [x] Independently review numerical decisions, eligibility, identity, bounds and
   interval semantics; fix substantiated defects and rerun affected checks.
 - [x] Document exact results, limits and deferred consumer qualification.
-- [ ] Commit verified documentation and integrate locally without publication.
+- [x] Commit verified documentation and integrate locally without publication.
 
 ## Execution ledger
 
@@ -135,6 +135,10 @@ evidence; the new worktree is `Saved/MeshAnalysisWorktree` on `feature/mesh-surf
   [delivery report](../../MESH_ANALYSIS_DELIVERY.md).
 - Verified archive: `Saved/MeshAnalysisDelivery-20260913-evidence.zip`, 147 payload
   entries with complete size/SHA-256 readback. No images generated or cleaned.
+- `4be5837`: delivery documentation committed and fast-forwarded into
+  `research/skeletal-surface-sampling`. All 105 tests passed in the integrated root;
+  all 47 archived Python source/test/tool files match byte-for-byte. Integration
+  receipt and log are retained beside the archive receipt. No push performed.
 
 Numerical ruling: scale exact squared distance before float square root so a positive
 representable distance is not lost through premature squared-distance underflow.

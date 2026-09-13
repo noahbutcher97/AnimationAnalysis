@@ -6,6 +6,12 @@ This additive Python 0.4.0 slice stays in AnimationAnalysis. Native capture,
 consumer adapters, assets and dependency pins are unchanged. No remote publication
 is part of this delivery.
 
+Local integration fast-forwarded `research/skeletal-surface-sampling` to `4be5837`.
+All 105 tests passed again in the integrated root, and all 47 archived Python
+source/test/tool files matched byte-for-byte. Native files and `AGENTS.md` remain
+unchanged. The integration receipt and log are retained at
+`Saved/MeshAnalysisDelivery-20260913/`; the qualification archive is immutable.
+
 ## Delivered behavior
 
 The [public API](MESH_ANALYSIS.md) measures explicit topology-bound triangle regions
