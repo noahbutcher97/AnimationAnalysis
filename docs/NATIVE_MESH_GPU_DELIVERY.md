@@ -5,6 +5,13 @@ Verified 2026-09-13. Implementation commit:
 Changes stay in AnimationAnalysis; no Katana assets, adapters, dependency pins or
 engine files changed. This delivery is committed locally, without remote publication.
 
+Local integration preserves owner commit `2120efd` through merge `518c8e4`.
+All 42 native source files were compared with the tested archive: only five
+first-line copyright comments differ after line-ending normalization. Executable
+source is unchanged. The comparison receipt is retained separately at
+`Saved/GpuMeshDelivery-20260913/integration-verification.json`; the qualification
+archive remains unchanged.
+
 ## Delivered behavior
 
 The [GPU API](NATIVE_MESH_GPU.md) reads actual renderer Skin Cache positions for
