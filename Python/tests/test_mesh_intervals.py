@@ -129,6 +129,18 @@ class MeshIntervalTests(unittest.TestCase):
         self.assertNotEqual(rows[0].second.observation_identity, rows[1].second.observation_identity)
         self.assertEqual(summarize(rows, gap=1).status, 'complete')
 
+    def test_changed_required_subject_or_stream_suppresses_aggregate(self):
+        for changes in ({'subject_id': 'other-subject'}, {'stream_id': 'other-stream'}):
+            selected = selection(observation(time=1))
+            requirement = replace(selected.requirement, pose=replace(selected.requirement.pose, **changes))
+            changed = measure_mesh_pair(pair(first=replace(selected, requirement=requirement),
+                                            sample_id='changed', time=1), tolerance=1, limits=LIMITS)
+            summary = summarize([measured(0), changed], gap=1)
+            self.assertEqual(summary.status, 'insufficient')
+            self.assertFalse(summary.aggregate_available)
+            self.assertTrue(any('configuration_changed' in reason for reason in summary.reasons))
+            self.assertIsNone(summary.sampled_minimum_distance)
+
     def test_gap_comparison_uses_exact_stored_clock_numbers(self):
         summary = summarize([measured(-2**-54), measured(1)], start=-2**-54, gap=1)
         self.assertEqual(summary.status, 'insufficient')

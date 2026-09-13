@@ -170,7 +170,7 @@ def _input_identity(selection):
     digest.update(b'\0')
     digest.update(observation.position_data)
     criteria = asdict(requirement)
-    del criteria['pose']
+    criteria['pose'] = {name: criteria['pose'][name] for name in ('subject_id', 'stream_id')}
     for name in ('required_features', 'known_features', 'allowed_exclusions', 'allowed_producers'):
         criteria[name] = sorted(criteria[name])
     return MeshInputIdentity(observation.component_id, observation.component_generation,
