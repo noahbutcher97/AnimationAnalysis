@@ -7,7 +7,7 @@ import unittest
 from animation_analysis import ClockStamp, PoseKey
 from animation_analysis.temporal import TimeInterval
 from animation_analysis.mesh_analysis import measure_mesh_pair
-from animation_analysis.mesh_intervals import summarize_mesh_interval
+from animation_analysis import summarize_mesh_interval
 from mesh_analysis_fixtures import LIMITS, observation, pair, selection
 
 
@@ -110,6 +110,19 @@ class MeshIntervalTests(unittest.TestCase):
                 self.assertIsNone(summary.sampled_within_tolerance_count)
                 self.assertIsNone(summary.sampled_minimum_distance)
                 self.assertEqual(len(summary.results), 2)
+
+    def test_invalid_sample_time_cannot_contribute_to_interval_aggregate(self):
+        outside = measured(-.1, height=0)
+        unrelated = replace(measured(.5, height=0), acquired=ClockStamp('other', .5))
+        duplicate = measured(0, sample_id='duplicate', height=0)
+        for invalid in (outside, unrelated, duplicate):
+            rows = [measured(0), invalid, measured(1)]
+            summary = summarize(rows, gap=2)
+            self.assertEqual(summary.status, 'insufficient')
+            self.assertFalse(summary.aggregate_available)
+            self.assertIsNone(summary.sampled_minimum_distance)
+            self.assertIsNone(summary.sampled_intersection_count)
+            self.assertEqual(summary.to_mapping()['results'][1], invalid.to_mapping())
 
     def test_pose_revision_and_positions_can_change(self):
         rows = [measured(0), measured(1, height=2)]

@@ -42,7 +42,8 @@ class MeshIntervalSummary:
     measurement requirements. It does not certify behavior between samples.
     When status is insufficient but aggregate_available is True, numeric fields
     describe only the measured inputs as partial evidence. Configuration changes
-    suppress every aggregate measurement/count (None), retaining individual results.
+    or invalid sample identities/times suppress aggregate measurements/counts (None),
+    retaining individual results.
     sample_count always counts all submitted results, including insufficient ones.
     """
     interval: TimeInterval
@@ -118,15 +119,19 @@ def summarize_mesh_interval(results, interval, *, max_gap_seconds, max_samples):
             comparable = False
             reasons.append(f'sample:{index}:configuration_changed')
         if result.sample_id in sample_ids:
+            comparable = False
             reasons.append(f'sample:{index}:duplicate_sample_id')
         sample_ids.add(result.sample_id)
         clock_key = (stamp.domain, stamp.seconds)
         if clock_key in times:
+            comparable = False
             reasons.append(f'sample:{index}:duplicate_acquisition_time')
         times.add(clock_key)
         if stamp.domain != interval.start.domain:
+            comparable = False
             reasons.append(f'sample:{index}:unrelated_clock')
         elif not interval.start.seconds <= stamp.seconds <= interval.end.seconds:
+            comparable = False
             reasons.append(f'sample:{index}:outside_interval')
         if result.status != 'measured':
             reasons.append(f'sample:{index}:measurement_insufficient')
@@ -141,6 +146,7 @@ def summarize_mesh_interval(results, interval, *, max_gap_seconds, max_samples):
                     seconds = None
                 exceeds = exact > bound
                 if exact < 0:
+                    comparable = False
                     reasons.append(f'gap:{index-1}:reversed_acquisition_time')
                 if exceeds:
                     reasons.append(f'gap:{index-1}:exceeds_max_gap')
