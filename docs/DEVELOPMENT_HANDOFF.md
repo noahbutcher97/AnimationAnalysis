@@ -1,6 +1,6 @@
 # Shared suite development handoff
 
-Recorded 2026-09-11. Read [repository instructions](../AGENTS.md), the
+Updated 2026-09-13. Read [repository instructions](../AGENTS.md), the
 [API and verification guide](../README.md), then [whole-suite migration](MIGRATION.md).
 This document records the accepted first-delivery scope and consumer integration
 boundary. Current implementation, commands and results are in
@@ -9,7 +9,9 @@ and [asynchronous API compatibility](ASYNC_READBACK.md).
 
 The next implemented slice is [native CPU bone/rigid reference sampling](NATIVE_MESH_REFERENCE.md).
 Its [delivery report](NATIVE_MESH_REFERENCE_DELIVERY.md) records verification and limits.
-Cached-GPU mesh acquisition and combined image/mesh budgeting are next. Katana's
+The next slice, [bounded GPU bone sampling and shared image/mesh admission](NATIVE_MESH_GPU.md),
+is implemented; its [delivery report](NATIVE_MESH_GPU_DELIVERY.md) gives exact
+tests, performance and archived replay. Katana's
 owner retains consumer edits, dependency pins, rebuilds and gameplay verification.
 
 ## Verified starting point
@@ -60,11 +62,12 @@ The [mesh record/replay slice](MESH_RECORD_DELIVERY.md) is now implemented in Py
 bounded replay with exclusive publication. Its [contract guide](MESH_OBSERVATIONS.md)
 and [completed plan](superpowers/plans/2026-09-11-mesh-observation-records.md) define the
 native producer's wire contract. The CPU/rigid reference and conservative effective
-inventory are implemented; proceed next with bounded GPU sampling and combined budgets.
-No further broad research is required before that implementation. Production morph support is deferred unless a
+inventory and bounded GPU/shared-budget slice are implemented. Next obtain
+consumer-owned integration evidence and qualify the next explicitly selected
+deformation/pose capability. No further broad tool audit is needed. Production morph support is deferred unless a
 required selected surface needs it; retain a small early positive morph experiment.
 Cloth, graph and material-effect coverage require separate qualification. No engine
-patch or consumer dependency update is included in the native reference delivery.
+patch or consumer dependency update is included in either native delivery.
 
 ## Development host and production integration
 

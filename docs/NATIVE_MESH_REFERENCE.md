@@ -77,7 +77,9 @@ is invalid; sections are capped at 64 and bones at 65,536. Admission reserves
 producer allocations. This conservatively covers payload, skin/matrix work and
 bounded metadata/serialization capacity. It is not process RSS: engine storage,
 allocator overhead, sampler enrollment and caller copies are outside it. There is
-no topology cache. This budget is **not yet shared with image/GPU capture**.
+no topology cache. An optional second constructor argument accepts the
+[common image/GPU capture budget](NATIVE_MESH_GPU.md#combined-capacity-and-compatibility),
+so retained CPU references can consume the same aggregate admission.
 
 The Windows writer runs synchronously on the game thread, preventing overlapping
 exports against one reservation. It writes [mesh replay schema 1](MESH_OBSERVATIONS.md)
@@ -107,6 +109,6 @@ directory, run the repository tool `Python/verify_mesh_reference.py` using an
 installed package and explicit limits. Its geometry error fields are retained
 native analytic-test evidence; it independently validates bundle integrity/schema.
 
-The next slice is bounded cached-GPU acquisition and combined image/mesh admission,
-then renderer comparison and cancellation/teardown qualification. Morph, cloth,
+[Bounded cached-GPU acquisition and combined image/mesh admission](NATIVE_MESH_GPU.md)
+now have renderer comparison and cancellation/teardown qualification. Morph, cloth,
 deformer, material displacement and broader pose/RHI coverage remain later work.

@@ -66,7 +66,9 @@ limits and pending consumer integration; fast-forward the local research branch.
   in this first backend; reject other layouts rather than reinterpret offsets.
 - Ruling: restrict this backend to the previously qualified single-node bone subset.
   Full deformation and broader renderer support remain explicit later capabilities.
-- Shared admission and GPU implementation are under native qualification.
+- Shared admission, GPU acquisition, neutral controls and archive replay are verified.
+- Implementation committed as `2201b32`; final delivery evidence is in
+  `../../NATIVE_MESH_GPU_DELIVERY.md`. Consumer integration remains owner-controlled.
 
 ### Frozen comparison workload
 

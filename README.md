@@ -10,15 +10,18 @@ see [remaining ownership and work](docs/MIGRATION.md). Bounded asynchronous RGB/
 readback is available as an explicit opt-in. Python 0.3.0 adds
 [portable mesh records and bounded replay](docs/MESH_OBSERVATIONS.md). The native
 [CPU bone/rigid reference producer](docs/NATIVE_MESH_REFERENCE.md) adds explicit
-enrollment and immutable geometry. Cached-GPU production sampling, full deformation
-coverage and mesh penetration remain outside the implemented scope.
+enrollment and immutable geometry. [Bounded Skin Cache bone sampling and shared
+image/mesh admission](docs/NATIVE_MESH_GPU.md) are now explicit options. Full
+deformation coverage and mesh penetration remain outside the implemented scope.
 
 Read the [delivery evidence](docs/RENDERED_READBACK_DELIVERY.md),
 [asynchronous API and compatibility](docs/ASYNC_READBACK.md), and
 [development handoff](docs/DEVELOPMENT_HANDOFF.md) for verification and consumer ownership.
 The [mesh record delivery](docs/MESH_RECORD_DELIVERY.md) records Python 0.3.0
 verification. Native reference scope and integration evidence are recorded in
-[the native delivery](docs/NATIVE_MESH_REFERENCE_DELIVERY.md).
+[the native delivery](docs/NATIVE_MESH_REFERENCE_DELIVERY.md). The
+[GPU delivery report](docs/NATIVE_MESH_GPU_DELIVERY.md) records the new qualification,
+combined workload, replay archive and remaining consumer boundary.
 
 ## Verification
 

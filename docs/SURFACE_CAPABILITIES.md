@@ -40,7 +40,7 @@ The **current evidence** column is deliberately narrower than the target product
 |---|---|---|
 | Motion, pose and explicit proxies | Caller-nominated points, transforms and clocks | Existing foundation; retain as a useful inexpensive option without surface claims. |
 | Rigid props and attachments | Resident triangles, section identity and acquisition transform | Native ordinary static meshes and direct qualified skeletal attachments now have explicit enrollment, immutable triangles, transform/pose checks and replacement rejection. Broader component/parent types remain unqualified. |
-| Bone-deformed meshes | Effective weights, reference mapping, finalized pose, LOD and triangles | Native CPU single-node references pass two LODs, multiple sections, effective-weight invalidation and retained-budget controls. Cached-GPU agreement remains probe evidence; production GPU and general pose ordering remain open. |
+| Bone-deformed meshes | Effective weights, reference mapping, finalized pose, LOD and triangles | Native CPU and cached-GPU single-node references pass two LODs, multiple sections and retained-budget controls. The GPU delivery adds matching raster, combined admission and teardown evidence. General pose/deformation coverage remains open. |
 | Morphs and facial correctives | Effective deformed positions at the required stage; active state/provenance | Small early extension experiment; production support follows separately unless required by selected consumer surfaces. A bone reference cannot serve as the expected final morph result. |
 | Cloth and simulated clothing | Mapped render vertices after simulation/blending, simulation identity and section coverage | Planned qualification including mixed cloth/non-cloth sections and frozen/skipped updates; not a bone-only fallback. |
 | Control Rig, IK, post-process and physics blending | The pose actually consumed by skinning, plus any later deformation | Source-driven previews do not establish live parity. Qualify ordering with a real skeletal component; separately identify simulation-driven surface changes. |
@@ -106,8 +106,9 @@ pass; the API must already represent them without silent degradation.
 
 The [record/replay implementation plan](superpowers/plans/2026-09-11-mesh-observation-records.md)
 is complete for the portable contract. Native CPU/reference controls and conservative
-effective inventory are now in the existing host. Next promote bounded GPU acquisition
-and combined admission; complete production acceptance remains open. Complete the live consumer inventory described
+effective inventory are now in the existing host. [Bounded GPU acquisition and
+combined admission](NATIVE_MESH_GPU_DELIVERY.md) now have native qualification;
+complete production acceptance remains open. Complete the live consumer inventory described
 in the [Katana assessment](research/2026-09-11-katana-surface-requirements.md#required-consumer-qualification)
 before claiming that the qualified subset satisfies its actual needs. Any additional
 active required feature becomes qualification work, not an assumed exception.

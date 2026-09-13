@@ -8,7 +8,8 @@ no local AI setup or private workflow definitions to interpret them.
 Current layout: `Python/src/animation_analysis` owns portable contracts, geometry,
 raster/pixel review, integrity, identities, metrics and temporal services. `Source/AnimationCapture`
 owns the Unreal recorder, PNG writer, synchronous/asynchronous surface adapters and
-[CPU bone/rigid references](NATIVE_MESH_REFERENCE.md). `Python/UnrealHost`
+[CPU bone/rigid references](NATIVE_MESH_REFERENCE.md), [cached GPU bone sampling and
+shared admission](NATIVE_MESH_GPU.md). `Python/UnrealHost`
 owns neutral native tests. The old project paths below are compatibility or migration
 locations; shared implementations now have this repository as their source of truth.
 
@@ -49,10 +50,12 @@ and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its own
    The [animated readiness follow-up](research/2026-09-11-animated-surface-readiness.md)
    adds real animation, rigid attachment, delayed geometry/raster controls and loaded
    asset findings. The [portable record/replay slice](MESH_RECORD_DELIVERY.md) is
-   implemented in Python 0.3.0. Next qualify production CPU/rigid and bounded GPU sampling. Preserve explicit
+   implemented in Python 0.3.0. CPU/rigid and bounded GPU bone producers now have
+   [native qualification evidence](NATIVE_MESH_GPU_DELIVERY.md). Preserve explicit
    unsupported coverage and defer production morph/cloth/graph/material extensions
    until their positive controls pass. Katana's effective live component inventory
-   remains a prerequisite to consumer adequacy claims. Native implementation is open.
+   remains a prerequisite to consumer adequacy claims. Broader deformation and
+   animation-graph coverage, larger workloads and portable backend expansion remain open.
 2. Explicit region/support and temporal surfaces; offline intersection/containment
    with supported topology/deformation limits, then separate depth/volume/swept work.
 3. Move remaining generic paired evaluation/preview calculations and offline stream,
