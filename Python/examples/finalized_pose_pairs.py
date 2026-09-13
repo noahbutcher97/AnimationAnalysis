@@ -251,6 +251,10 @@ def _validate_manifest(value):
                expected["surface_intersection"], EXPECTED_INTERSECTIONS[index])
     controls = _mapping(value["controls"], {"checks_passed", "peak_reserved_bytes"},
                         "capture controls")
+    if len({row["frame_id"] for row in rows}) != len(rows):
+        raise ValueError("Fixed qualification requires five distinct observed frame IDs")
+    if rows[0]["body"]["pose_revision"] == rows[0]["attached_part"]["pose_revision"]:
+        raise ValueError("First-pair observer revisions must differ")
     if type(controls["checks_passed"]) is not bool:
         raise ValueError("Capture checks flag must be boolean")
     _integer(controls["peak_reserved_bytes"], "peak reserved bytes")
@@ -311,6 +315,27 @@ def _selection(observation, role_name, role, participant, frame_id, limits):
         observation, region,
         _requirement(role_name, role, participant, frame_id),
     )
+
+
+def _coverage_profile_errors(observation, role_name):
+    profile = ROLE_PROFILE[role_name]
+    expected = {
+        profile["feature"]: "observed",
+        "pose_ordering": "observed",
+        **{feature: "excluded" for feature in EXCLUSIONS},
+    }
+    coverage = {item.feature: item for item in observation.coverage}
+    errors = [f"{feature}:missing" for feature in expected if feature not in coverage]
+    errors.extend(f"{feature}:unexpected" for feature in coverage if feature not in expected)
+    for feature, expected_state in expected.items():
+        item = coverage.get(feature)
+        if item is None:
+            continue
+        if item.state != expected_state:
+            errors.append(f"{feature}:{item.state}")
+        if item.producer_id != profile["producer"]:
+            errors.append(f"{feature}:producer_mismatch")
+    return errors
 
 
 def _close(left, right):
@@ -506,6 +531,11 @@ def evaluate_run(observations):
                     identity_errors.append({
                         "pair_id": pair_id, "role": role_name, "bundle": bundle,
                         "error": "vector convention differs from fixed profile",
+                    })
+                for error in _coverage_profile_errors(observation, role_name):
+                    identity_errors.append({
+                        "pair_id": pair_id, "role": role_name, "bundle": bundle,
+                        "error": f"coverage profile {error}",
                     })
                 loaded[role_name] = observation
                 input_hashes.update(_bundle_hashes(root, bundle))

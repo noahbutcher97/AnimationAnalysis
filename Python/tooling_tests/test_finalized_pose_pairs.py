@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import struct
 import tempfile
@@ -75,23 +76,28 @@ def _topology(role):
     )
 
 
-def _coverage(role, pair_id):
+def _coverage(role, pair_id, coverage_change=None):
     feature = "bone" if role == "body" else "rigid"
     producer = ("unreal-cpu-bone-reference-v1" if role == "body"
                 else "unreal-rigid-reference-v1")
+    changed_role, changed_feature, changed_state = coverage_change or (None, None, None)
     return tuple(
         FeatureCoverage(
             name,
-            "observed" if name in (feature, "pose_ordering") else "excluded",
+            changed_state if role == changed_role and name == changed_feature
+            else "observed" if name in (feature, "pose_ordering") else "excluded",
             producer,
             pair_id,
             "independent finalized-pose fixture",
         )
         for name in (feature, "pose_ordering", *FEATURE_EXCLUSIONS)
+        if not (role == changed_role and name == changed_feature
+                and changed_state == "omitted")
     )
 
 
-def _observation(role, topology, pair_id, index, acquired):
+def _observation(role, topology, pair_id, index, acquired, frame_id,
+                 body_revision, attached_revision, coverage_change):
     if role == "body":
         offset = BODY_OFFSETS[index]
         positions = ((offset, -10, -10), (offset, -10, 10),
@@ -99,7 +105,7 @@ def _observation(role, topology, pair_id, index, acquired):
         transform = COMMON_TRANSFORM
         component = "animated-body"
         producer = "unreal-cpu-bone-reference-v1"
-        revision = 12 + index * 2
+        revision = body_revision
     else:
         positions = CUBE_POSITIONS
         scale = 5.0 / 128.0
@@ -111,19 +117,22 @@ def _observation(role, topology, pair_id, index, acquired):
         transform = (*transform[:12], *ATTACHED_ORIGINS[index], 1.0)
         component = "attached-part"
         producer = "unreal-rigid-reference-v1"
-        revision = 4 + index * 2
-    pose = PoseKey(component, "finalized-pose", 791 + index, revision)
+        revision = attached_revision
+    pose = PoseKey(component, "finalized-pose", frame_id, revision)
     return MeshObservation(
         component, 1, topology,
         struct.pack(f"<{len(positions) * 3}d",
                     *(value for point in positions for value in point)),
         "centimetres", "unreal-left-handed-z-up", "row", transform, pose,
         acquired, producer, f"neutral-finalized-pose:{role}-configuration",
-        _coverage(role, pair_id), RECORD_LIMITS,
+        _coverage(role, pair_id, coverage_change), RECORD_LIMITS,
     )
 
 
-def write_run(root):
+def write_run(root, *, coverage_change=None,
+              frame_ids=(791, 792, 793, 794, 795),
+              body_revisions=(12, 14, 16, 18, 20),
+              attached_revisions=(4, 6, 8, 10, 12)):
     topologies = {role: _topology(role) for role in ("body", "attached_part")}
     roles = {
         "body": {
@@ -139,23 +148,25 @@ def write_run(root):
     for index, pair_id in enumerate(PAIR_IDS):
         acquired = ClockStamp("unreal-monotonic", index * 0.2)
         observations = {
-            role: _observation(role, topologies[role], pair_id, index, acquired)
+            role: _observation(
+                role, topologies[role], pair_id, index, acquired, frame_ids[index],
+                body_revisions[index], attached_revisions[index], coverage_change)
             for role in topologies
         }
         row = {
             "pair_id": pair_id,
             "body_bundle": f"{pair_id}-body",
             "attached_part_bundle": f"{pair_id}-attached-part",
-            "frame_id": 791 + index,
+            "frame_id": frame_ids[index],
             "acquired_seconds": acquired.seconds,
             "body": {
-                "pose_revision": 12 + index * 2,
+                "pose_revision": body_revisions[index],
                 "configuration_id": observations["body"].configuration_id,
                 "topology_id": topologies["body"].identity,
                 "completed_seconds": acquired.seconds + 0.01,
             },
             "attached_part": {
-                "pose_revision": 4 + index * 2,
+                "pose_revision": attached_revisions[index],
                 "configuration_id": observations["attached_part"].configuration_id,
                 "topology_id": topologies["attached_part"].identity,
                 "completed_seconds": acquired.seconds + 0.02,
@@ -356,6 +367,51 @@ class FinalizedPosePairTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     example.evaluate_run(self.root)
 
+    def test_exact_role_coverage_rejects_inactive_or_missing_fixed_evidence(self):
+        example = load_example(self)
+        cases = [
+            ("body_bone_inactive", ("body", "bone", "inactive"), "bone:inactive"),
+            ("attached_rigid_inactive", ("attached_part", "rigid", "inactive"),
+             "rigid:inactive"),
+            ("pose_ordering_inactive", ("body", "pose_ordering", "inactive"),
+             "pose_ordering:inactive"),
+            ("excluded_cloth_inactive", ("attached_part", "cloth", "inactive"),
+             "cloth:inactive"),
+        ]
+        cases.extend(
+            (f"missing_{feature}", ("body", feature, "omitted"), f"{feature}:missing")
+            for feature in FEATURE_EXCLUSIONS
+        )
+        for label, change, reason in cases:
+            with self.subTest(label=label):
+                root = self.root / label
+                root.mkdir()
+                write_run(root, coverage_change=change)
+
+                report = example.evaluate_run(root)
+
+                self.assertEqual(report["status"], "insufficient")
+                self.assertTrue(any(reason in row["error"]
+                                    for row in report["identity_errors"]), reason)
+
+    def test_distinct_frames_are_required_with_manifest_and_records_bound(self):
+        example = load_example(self)
+        root = self.root / "repeated-frame"
+        root.mkdir()
+        write_run(root, frame_ids=(791, 791, 793, 794, 795))
+
+        with self.assertRaisesRegex(ValueError, "distinct.*frame"):
+            example.evaluate_run(root)
+
+    def test_first_observer_revisions_must_differ_with_manifest_and_records_bound(self):
+        example = load_example(self)
+        root = self.root / "same-first-revision"
+        root.mkdir()
+        write_run(root, body_revisions=(4, 14, 16, 18, 20))
+
+        with self.assertRaisesRegex(ValueError, "observer.*revision"):
+            example.evaluate_run(root)
+
     def test_missing_input_stays_insufficient_when_surviving_interval_meets_gap(self):
         example = load_example(self)
         (self.root / "finalized-pair-02-attached-part" / "complete.json").unlink()
@@ -371,6 +427,30 @@ class FinalizedPosePairTests(unittest.TestCase):
                        if row["pair_id"] == "finalized-pair-02")
         self.assertFalse(missing["matches"])
         self.assertIsNone(missing["observed_minimum_distance_cm"])
+
+    def test_manifest_must_be_a_regular_file(self):
+        example = load_example(self)
+        root = self.root / "directory-manifest"
+        (root / "finalized-pose-pairs.json").mkdir(parents=True)
+
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            example.evaluate_run(root)
+
+    @unittest.skipUnless(hasattr(os, "symlink"), "platform has no symlink support")
+    def test_manifest_symlink_is_rejected_when_platform_permits_creation(self):
+        example = load_example(self)
+        root = self.root / "linked-manifest"
+        root.mkdir()
+        target = root / "target.json"
+        target.write_text(json.dumps(self.manifest), encoding="utf-8")
+        link = root / "finalized-pose-pairs.json"
+        try:
+            link.symlink_to(target)
+        except (NotImplementedError, OSError) as error:
+            self.skipTest(f"symlink creation unavailable: {error}")
+
+        with self.assertRaisesRegex(ValueError, "regular file"):
+            example.evaluate_run(root)
 
     def test_cli_exclusively_publishes_verified_insufficient_and_malformed_results(self):
         example = load_example(self)
