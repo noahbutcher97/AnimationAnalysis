@@ -57,6 +57,14 @@ class HostToolsTests(unittest.TestCase):
                          "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7")
         self.assertTrue((self.root / "host/Content").is_dir())
 
+    def test_staging_includes_only_the_declared_neutral_renderer_configuration(self):
+        plugin = self.plugin()
+        self.file("plugin/Python/UnrealHost/Config/DefaultEngine.ini", b"r.SkinCache.CompileShaders=True")
+        self.file("plugin/Python/UnrealHost/Config/Consumer.ini", b"unrelated")
+        hashes = self.tools.stage_sources(plugin, self.root / "host")
+        self.assertIn("Config/DefaultEngine.ini", hashes)
+        self.assertNotIn("Config/Consumer.ini", hashes)
+
     def test_retained_host_rejects_unmanaged_or_modified_files(self):
         plugin = self.plugin()
         host = plugin / "Saved/DevelopmentHost"
@@ -172,15 +180,23 @@ class HostToolsTests(unittest.TestCase):
 
     def test_timeout_kills_spawned_child_and_retains_failure_record(self):
         child_marker = self.root / "child-survived.txt"
+        release = self.root / "cleanup-returned.txt"
+        child = self.file("child.py", (
+            "import pathlib, sys, time\n"
+            "gate = pathlib.Path(sys.argv[1])\n"
+            "deadline = time.monotonic() + 30\n"
+            "while not gate.exists() and time.monotonic() < deadline: time.sleep(.05)\n"
+            "if gate.exists(): pathlib.Path(sys.argv[2]).write_text('survived')\n").encode())
         script = self.file("parent.py", (
             "import subprocess, sys, time\n"
-            "subprocess.Popen([sys.executable, '-c', "
-            "\"import pathlib,time;time.sleep(1.5);pathlib.Path(\" + repr(sys.argv[1]) + \" ).write_text('survived')\"])\n"
+            "subprocess.Popen([sys.executable, sys.argv[1], sys.argv[2], sys.argv[3]])\n"
             "print('child spawned', flush=True)\n"
             "time.sleep(30)\n").encode())
         records = []
         with self.assertRaises(self.tools.ProcessFailure):
-            self.tools.run_process([sys.executable, script, child_marker], self.root, self.root / "logs", "timeout.log", .6, records)
+            self.tools.run_process([sys.executable, script, child, release, child_marker], self.root, self.root / "logs", "timeout.log", .6, records)
+        # Test survival after confirmed cleanup, not taskkill's machine-dependent startup latency.
+        release.write_text("cleanup finished")
         time.sleep(1.1)
         self.assertFalse(child_marker.exists())
         self.assertEqual(records[0]["status"], "timed_out")

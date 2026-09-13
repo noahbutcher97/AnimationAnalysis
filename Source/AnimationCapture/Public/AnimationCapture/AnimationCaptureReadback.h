@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "RenderGraphFwd.h"
 #include "RHIResources.h"
+#include "AnimationCapture/AnimationCaptureBudget.h"
 
 class FRHICommandListImmediate;
 struct FAnimationCaptureReadbackState;
@@ -75,6 +76,9 @@ struct ANIMATIONCAPTURE_API FAnimationCaptureReadbackResult
 	double CompletedWallSeconds = 0, CollectedWallSeconds = 0, DecodeSeconds = 0;
 	/** Acquisition-to-completion wall latency; supplied acquisition clock remains separate. */
 	double CompletionLatencySeconds = 0;
+	/** Keeps the shared allocation envelope charged while this result owns decoded arrays.
+	 * Copying this result copies its arrays and creates caller-owned allocations outside this reservation. */
+	TSharedPtr<FAnimationCaptureReservation, ESPMode::ThreadSafe> SharedBudgetReservation;
 };
 
 /** Safe to capture in render commands. A retained stale ticket owns no retired image payload. */
@@ -100,7 +104,8 @@ private:
  * independent of physical depth texture stride or staging texture row pitch. Reservations
  * include GPU output, staging and decoded arrays (RGB: 12; depth: 41 bytes/pixel).
  * Identity text is separately bounded to 256 characters per field and 128 pose witnesses.
- * Caller-owned collected arrays and downstream encoding must remain charged by the caller.
+ * With a shared budget, collected arrays retain admission automatically; downstream encoding
+ * needs its own reservation. Extra copies of result arrays are caller-owned allocations.
  *
  * Pump never waits for the GPU and has at most one pending render poll command. Timeout and
  * cancellation emit one terminal result but keep submitted resources charged until retired.
@@ -115,7 +120,8 @@ private:
 class ANIMATIONCAPTURE_API FAnimationCaptureReadbackProducer
 {
 public:
-	explicit FAnimationCaptureReadbackProducer(const FAnimationCaptureReadbackLimits& Limits = {});
+	explicit FAnimationCaptureReadbackProducer(const FAnimationCaptureReadbackLimits& Limits = {},
+		TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget = nullptr);
 	~FAnimationCaptureReadbackProducer();
 	FAnimationCaptureReadbackProducer(const FAnimationCaptureReadbackProducer&) = delete;
 	FAnimationCaptureReadbackProducer& operator=(const FAnimationCaptureReadbackProducer&) = delete;

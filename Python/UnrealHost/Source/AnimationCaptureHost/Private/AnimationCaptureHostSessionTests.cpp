@@ -181,6 +181,7 @@ private:
 		Settings.MaxSamples = 1200; Settings.MaxFrames = 32; Settings.MaxDataBytes = 64ll * 1024 * 1024;
 		Settings.bUseAsyncReadback = true;
 		Settings.bUseAsyncDiagnosticResolution = true;
+		Settings.SharedBudget = SharedBudget;
 		FAnimationCaptureSubject Subject; Subject.Id = TEXT("MovingPart"); Subject.Actor = SubjectActor;
 		TArray<FAnimationCaptureSubject> Subjects = {Subject}; FString Error;
 		if (!Test->TestTrue(TEXT("Explicit async session starts"), Session.Start(Fixture.World.Get(), Settings, Subjects, Error, Extension)))
@@ -366,6 +367,7 @@ private:
 	{
 		UGameViewportClient::OnViewportRendered().Remove(DrawHandle); DrawHandle.Reset();
 		FString Error; First.Stop(TEXT("fixture_cleanup"), Error); Second.Stop(TEXT("fixture_cleanup"), Error);
+		Test->TestEqual(TEXT("Shared session/image/PNG admission retires on cleanup"), SharedBudget->GetStats().LiveBytes, int64(0));
 		if (Replacement.IsValid()) { Replacement->Destroy(); } Replacement.Reset(); Actor.Reset();
 		Fixture.Stop();
 	}
@@ -373,6 +375,7 @@ private:
 	FAutomationTestBase* Test;
 	FAnimationCaptureHostFixture Fixture;
 	FAnimationCaptureSession First, Second;
+	TSharedRef<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget = MakeShared<FAnimationCaptureBudget, ESPMode::ThreadSafe>(FAnimationCaptureBudgetLimits{32, 128ll * 1024 * 1024});
 	TSharedPtr<FSessionFixtureExtension> FirstExtension, SecondExtension;
 	TWeakObjectPtr<AActor> Actor, Replacement;
 	TMap<uint64, FSessionDrawWitness> DrawWitnesses;

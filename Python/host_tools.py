@@ -21,6 +21,8 @@ import zipfile
 
 
 LIFECYCLE_TESTS = (
+    "AnimationAnalysis.Capture.Portability.SharedImageBudget",
+    "AnimationAnalysis.Capture.Portability.SharedPngBudget",
     "AnimationAnalysis.Capture.MeshReplay.PythonCanonicalTopology",
     "AnimationAnalysis.Capture.Portability.IndependentSessions",
     "AnimationAnalysis.Capture.Portability.ExtensionIntegrity",
@@ -33,6 +35,9 @@ SURFACE_TESTS = (
     "AnimationAnalysis.Capture.Surfaces.RenderedGeometry",
 )
 RENDERED_TESTS = SURFACE_TESTS + (
+    "AnimationAnalysis.Capture.Mesh.CachedPositions",
+    "AnimationAnalysis.Capture.Mesh.GPULifecycle",
+    "AnimationAnalysis.Capture.Mesh.GPUWorldCleanup",
     "AnimationAnalysis.Capture.Mesh.Reference",
     "AnimationAnalysis.Capture.Rendered.ReadbackRGBBytes",
     "AnimationAnalysis.Capture.Rendered.ReadbackRGB10Bit",
@@ -99,6 +104,10 @@ def _source_files(plugin):
     host_source = plugin / "Python/UnrealHost"
     pairs = [(plugin / "AnimationAnalysis.uplugin", "Plugins/AnimationAnalysis/AnimationAnalysis.uplugin"),
              (host_source / "AnimationCaptureHost.uproject", "AnimationCaptureHost.uproject")]
+    # The neutral host compiles Skin Cache support; individual fixtures opt in explicitly.
+    config = host_source / "Config/DefaultEngine.ini"
+    if config.is_file():
+        pairs.append((config, "Config/DefaultEngine.ini"))
     for origin, prefix in ((plugin / "Source", "Plugins/AnimationAnalysis/Source"),
                            (host_source / "Source", "Source")):
         if not origin.is_dir():
@@ -133,7 +142,8 @@ def stage_sources(plugin, host):
         target = safe_relative(host, relative, must_exist=False)
         digest = sha256_file(origin)
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(origin, target)
+        if not target.is_file() or sha256_file(target) != digest:
+            shutil.copyfile(origin, target)
         if sha256_file(target) != digest:
             raise ValueError(f"Source changed while staging: {origin}")
         hashes[relative] = digest

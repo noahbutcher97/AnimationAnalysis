@@ -50,7 +50,8 @@ struct FAnimationMeshBudget::FState
 	int64 Bytes = 0, Peak = 0;
 	int32 Count = 0;
 };
-FAnimationMeshBudget::FAnimationMeshBudget(const FAnimationMeshLimits& L) : State(MakeUnique<FState>()) { State->Limits = L; }
+FAnimationMeshBudget::FAnimationMeshBudget(const FAnimationMeshLimits& L, TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> Combined)
+	: State(MakeUnique<FState>()), SharedBudget(MoveTemp(Combined)) { State->Limits = L; }
 FAnimationMeshBudget::~FAnimationMeshBudget() = default;
 const FAnimationMeshLimits& FAnimationMeshBudget::Limits() const { return State->Limits; }
 int64 FAnimationMeshBudget::LiveBytes() const { FScopeLock Lock(&State->Mutex); return State->Bytes; }
@@ -137,8 +138,13 @@ TUniquePtr<FAnimationCaptureMeshReference> FAnimationCaptureMeshReference::Creat
 
 TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshReference::Capture(const FString& RequestId, FString& Error)
 {
+	return Prepare(RequestId, Error, true);
+}
+
+TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshReference::Prepare(const FString& RequestId, FString& Error, bool bComputePositions)
+{
 	Error.Reset();
-	auto Fail = [&Error](const TCHAR* Reason) -> TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>
+	auto Fail = [&Error](const TCHAR* Reason) -> TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe>
 	{ Error = Reason; return nullptr; };
 	if (!IsInGameThread()) { return Fail(TEXT("unavailable: capture requires the game thread")); }
 	auto& S = *State; auto* Component = S.Component.Get(); const auto& E = S.Enrollment;
@@ -215,6 +221,11 @@ TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureM
 	const int64 Bytes = 3 * (Vertices * 24 + Indices * 4) + Vertices * 12 + Bones * 128 + 1024 * 1024;
 	if (!S.Budget->Acquire(Bytes)) { return Fail(TEXT("unavailable: shared CPU snapshot count or byte admission exhausted")); }
 	TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> Snapshot(new FAnimationMeshSnapshot(S.Budget.ToSharedRef(), Bytes));
+	if (S.Budget->SharedBudget)
+	{
+		Snapshot->SharedReservation = S.Budget->SharedBudget->Reserve(Bytes);
+		if (!Snapshot->SharedReservation) { return Fail(TEXT("unavailable: combined capture byte or reservation admission exhausted")); }
+	}
 	auto& D = Snapshot->Value;
 	D.Enrollment = E; D.RequestId = RequestId; D.ProducerId = Skeletal ? TEXT("unreal-cpu-bone-reference-v1") : TEXT("unreal-rigid-reference-v1");
 	D.AcquiredSeconds = FPlatformTime::Seconds(); D.FrameId = GFrameCounter;
@@ -259,12 +270,15 @@ TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureM
 	D.Positions.SetNumUninitialized(Vertices);
 	if (SkelLOD)
 	{
+		if (bComputePositions)
+		{
 		TArray<FMatrix44f> Matrices; Skeletal->GetCurrentRefToLocalMatrices(Matrices, E.AnalysisLOD);
 		if (Matrices.Num() != Bones) { return Fail(TEXT("unavailable: reference-to-local mapping incomplete")); }
 		TArray<FVector3f> Skinned;
 		USkinnedMeshComponent::ComputeSkinnedPositions(Skeletal, Skinned, Matrices, *SkelLOD, *Weights);
 		if (Skinned.Num() != Vertices) { return Fail(TEXT("unavailable: CPU skinning returned incomplete geometry")); }
 		for (int32 I = 0; I < Vertices; ++I) { D.Positions[I] = FVector3d(Skinned[I]); }
+		}
 		ConfigHash.Update(Weights->GetDataVertexBuffer()->GetWeightData(), Weights->GetDataVertexBuffer()->GetVertexDataSize());
 		HashString(ConfigHash, FString::Printf(TEXT("%u:%u:%u"), Weights->GetMaxBoneInfluences(), Weights->GetBoneIndexByteSize(), Weights->GetBoneWeightByteSize()));
 		const auto& InverseBind = Skeletal->GetSkeletalMeshAsset()->GetRefBasesInvMatrix();
@@ -272,7 +286,7 @@ TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureM
 		const auto& Visibility = Skeletal->GetBoneVisibilityStates(); ConfigHash.Update(Visibility.GetData(), Visibility.Num());
 	}
 	else for (int32 I = 0; I < Vertices; ++I) { D.Positions[I] = FVector3d(Positions->VertexPosition(I)); }
-	for (const auto& P : D.Positions) if (!FMath::IsFinite(P.X) || !FMath::IsFinite(P.Y) || !FMath::IsFinite(P.Z))
+	if (bComputePositions) for (const auto& P : D.Positions) if (!FMath::IsFinite(P.X) || !FMath::IsFinite(P.Y) || !FMath::IsFinite(P.Z))
 	{ return Fail(TEXT("unavailable: nonfinite sampled geometry")); }
 	ConfigHash.Update(reinterpret_cast<const uint8*>(Positions->GetVertexData()), Vertices * sizeof(FVector3f));
 	D.TopologyId = AnimationCaptureMeshReplay::TopologyIdentity(D);

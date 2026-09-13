@@ -1,4 +1,8 @@
 #include "AnimationCapture/AnimationCaptureMeshReference.h"
+#include "AnimationCapture/AnimationCaptureMeshGPU.h"
+#include "AnimationCapture/AnimationCaptureImageWriter.h"
+#include "AnimationCapture/ViewportAsyncCapture.h"
+#include "AnimationCapture/ViewportSurfaceCapture.h"
 #include "AnimationCaptureHostFixture.h"
 #include "Animation/AnimSequence.h"
 #include "Animation/AnimBoneCompressionSettings.h"
@@ -355,6 +359,340 @@ private:
 	TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe> Retained;
 };
 
+double SnapshotDelta(const FAnimationMeshSnapshot& A, const FAnimationMeshSnapshot& B)
+{
+	if (A.Data().Positions.Num() != B.Data().Positions.Num()) { return TNumericLimits<double>::Max(); }
+	double Delta = 0;
+	for (int32 I = 0; I < A.Data().Positions.Num(); ++I)
+	{ Delta = FMath::Max(Delta, FVector3d::Distance(A.Data().Positions[I], B.Data().Positions[I])); }
+	return Delta;
+}
+
+class FMeshGPUControls : public IAutomationLatentCommand
+{
+public:
+	explicit FMeshGPUControls(FAutomationTestBase* InTest) : Test(InTest), Started(FPlatformTime::Seconds()) {}
+	~FMeshGPUControls() { Cleanup(); }
+	bool Update() override
+	{
+		if (FPlatformTime::Seconds() - Started > 60)
+		{
+			Test->AddError(TEXT("GPU mesh control deadline exceeded"));
+			WriteEvidence(TEXT("deadline"));
+			return true;
+		}
+		FString Error;
+		if (!Initialized)
+		{
+			UWorld* World = FAnimationCaptureHostFixture::FindWorld();
+			if (!World) { return false; }
+			CacheMode = IConsoleManager::Get().FindConsoleVariable(TEXT("r.SkinCache.Mode"));
+			if (!CacheMode) { Test->AddError(TEXT("r.SkinCache.Mode is unavailable")); return true; }
+			PreviousCacheMode = CacheMode->GetInt();
+			CacheMode->SetWithCurrentPriority(1);
+			if (!Fixture.Start(World, Error)) { Test->AddError(Error); return true; }
+			// Reuse the supported public adapter to normalize the fixture view family even
+			// though this control submits no image requests through it.
+			DiagnosticView = MakeUnique<FViewportAsyncCapture>(World, Fixture.View.Viewport, true);
+			// Test-owned opt-in only. The production producer never changes Skin Cache policy.
+			Fixture.Mesh->SkinCacheUsage.Init(ESkinCacheUsage::Enabled,
+				Fixture.Mesh->GetSkeletalMeshAsset()->GetResourceForRendering()->LODRenderData.Num());
+			Fixture.Mesh->MarkRenderStateDirty();
+			Fixture.Mesh->SetPosition(.25, false);
+			Fixture.Mesh->GetSingleNodeInstance()->SetPlaying(false);
+			Fixture.Mesh->TickAnimation(0, false);
+			Fixture.Mesh->RefreshBoneTransforms();
+			Directory = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("Observations") /
+				(TEXT("GpuMesh-") + FGuid::NewGuid().ToString(EGuidFormats::Digits)));
+			IFileManager::Get().MakeDirectory(*Directory, true);
+			SharedBudget = MakeShared<FAnimationCaptureBudget, ESPMode::ThreadSafe>(
+				FAnimationCaptureBudgetLimits{8, 128ll * 1024 * 1024});
+			Initialized = true;
+			return false;
+		}
+
+		if (Stage == 0)
+		{
+			// Admission-only controls happen in one game-thread turn, before another draw can submit them.
+			auto CancelProducer = CreateProducer(0, 5, Error);
+			if (!CancelProducer) { Test->AddError(TEXT("Cancellation producer: ") + Error); return true; }
+			FAnimationMeshGPUTicket Ticket;
+			Test->TestTrue(TEXT("Before-submit request admitted"), CancelProducer->Request(TEXT("cancel-before-submit"), Ticket, Error));
+			Test->TestTrue(TEXT("Before-submit cancellation succeeds once"), CancelProducer->Cancel(Ticket, TEXT("fixture cancellation")));
+			Test->TestFalse(TEXT("Cancellation cannot be repeated"), CancelProducer->Cancel(Ticket, TEXT("duplicate")));
+			FAnimationMeshGPUResult Cancelled;
+			Test->TestTrue(TEXT("Cancellation has one collected terminal result"), CancelProducer->Collect(Cancelled));
+			Test->TestTrue(TEXT("Cancellation status is explicit"), Cancelled.Status == EAnimationMeshGPUStatus::Cancelled);
+			Test->TestFalse(TEXT("Cancellation result is collected exactly once"), CancelProducer->Collect(CancelledAgain));
+			CancelProducer->Shutdown();
+			Test->TestTrue(TEXT("Collected cancellation retains shared admission"), SharedBudget->GetStats().LiveReservations > 0);
+			Cancelled = FAnimationMeshGPUResult{};
+			CancelProducer.Reset();
+			Test->TestEqual(TEXT("Cancellation lease releases with its collected result"), SharedBudget->GetStats().LiveReservations, 0);
+
+			auto TimeoutProducer = CreateProducer(0, 1.e-9, Error);
+			if (!TimeoutProducer) { Test->AddError(TEXT("Timeout producer: ") + Error); return true; }
+			Test->TestTrue(TEXT("Tiny-deadline request admitted"), TimeoutProducer->Request(TEXT("timeout-before-render"), Ticket, Error));
+			TimeoutProducer->Pump();
+			FAnimationMeshGPUResult TimedOut;
+			Test->TestTrue(TEXT("Tiny deadline completes before a rendered acquisition"), TimeoutProducer->Collect(TimedOut));
+			Test->TestTrue(TEXT("Timeout status is distinct"), TimedOut.Status == EAnimationMeshGPUStatus::TimedOut);
+			Test->TestFalse(TEXT("Timed-out request has no acquisition"), TimedOut.bHasAcquisition);
+			TimeoutProducer->Shutdown(); TimeoutProducer.Reset(); TimedOut = FAnimationMeshGPUResult{};
+			Stage = 1; LOD = 0; Warmup = 0;
+			return false;
+		}
+
+		if (Stage == 1)
+		{
+			Fixture.Mesh->SetForcedLOD(LOD + 1);
+			Fixture.Mesh->SetPosition(.25, false); Fixture.Mesh->TickAnimation(0, false); Fixture.Mesh->RefreshBoneTransforms();
+			Stage = 2; Warmup = 0;
+			return false;
+		}
+		if (Stage == 2 && ++Warmup < 6) { return false; }
+		if (Stage == 2)
+		{
+			CPU = (LOD == 0 ? Fixture.Bone->Capture(TEXT("gpu-fine-cpu"), Error)
+				: Fixture.Coarse->Capture(TEXT("gpu-coarse-cpu"), Error));
+			if (!CPU) { Test->AddError(TEXT("CPU acquisition: ") + Error); return true; }
+			CPUAnalyticError = AnalyticError(CPU->Data(), Fixture.Mesh);
+			GPU = CreateProducer(LOD, 5, Error);
+			if (!GPU) { Test->AddError(TEXT("GPU enrollment: ") + Error); return true; }
+			Test->TestTrue(TEXT("GPU request admitted"), GPU->Request(LOD == 0 ? TEXT("fine") : TEXT("coarse"), ActiveTicket, Error));
+			Stage = 3; Warmup = 0;
+			return false;
+		}
+		if (Stage == 3)
+		{
+			GPU->Pump();
+			if (++Warmup == 3)
+			{
+				// The acquired result must remain the frozen .25 pose after live state advances.
+				Fixture.Mesh->SetPosition(.75, false); Fixture.Mesh->TickAnimation(0, false); Fixture.Mesh->RefreshBoneTransforms();
+			}
+			if (Warmup < 5) { return false; }
+			FAnimationMeshGPUResult Result;
+			if (!GPU->Collect(Result)) { return false; }
+			RecordResult(Result);
+			if (Result.Status != EAnimationMeshGPUStatus::Completed || !Result.Snapshot)
+			{
+				Test->AddError(FString::Printf(TEXT("LOD %d cached positions unavailable: %s"), LOD, *Result.Error));
+				WriteEvidence(TEXT("cached_positions_unavailable"));
+				return true;
+			}
+			Test->TestEqual(TEXT("GPU includes both enrolled sections"), Result.Snapshot->Data().Sections.Num(), 2);
+			Test->TestEqual(TEXT("GPU envelope and snapshot preserve one pose revision"), int64(Result.PoseRevision), Result.Snapshot->Data().PoseRevision);
+			Test->TestEqual(TEXT("GPU envelope and snapshot preserve one acquisition frame"), int64(Result.AcquisitionFrame), Result.Snapshot->Data().FrameId);
+			Test->TestTrue(TEXT("GPU result includes its renderer view"), Result.bHasView);
+			Test->TestEqual(TEXT("Renderer view identifies the GPU acquisition frame"), Result.View.EngineFrame, Result.AcquisitionFrame);
+			Test->TestTrue(TEXT("GPU preserves nonuniform acquisition transform"), Result.Snapshot->Data().ComponentToWorld.Equals(
+				CPU->Data().ComponentToWorld, 1.e-8));
+			const double CPUGPUDelta = SnapshotDelta(*Result.Snapshot, *CPU);
+			Test->TestTrue(TEXT("GPU and CPU agree at frozen .25 acquisition"), CPUGPUDelta <= .001);
+			Test->TestTrue(TEXT("CPU oracle agrees with analytic .25 pose"), CPUAnalyticError <= .001);
+			Test->TestTrue(TEXT("GPU schema-1 replay bundle written"), AnimationCaptureMeshReplay::Write(
+				Directory, LOD == 0 ? TEXT("fine") : TEXT("coarse"), *Result.Snapshot, Error));
+			RecordGeometryEvidence(LOD, CPUGPUDelta, CPUAnalyticError);
+			Retained.Add(MoveTemp(Result));
+			GPU->Shutdown(); GPU.Reset(); CPU.Reset();
+			if (++LOD < 2) { Stage = 1; return false; }
+			Stage = 4; Warmup = 0;
+			return false;
+		}
+
+		if (Stage == 4)
+		{
+			Fixture.Mesh->SetForcedLOD(1);
+			Fixture.Mesh->SkinCacheUsage.Init(ESkinCacheUsage::Disabled,
+				Fixture.Mesh->GetSkeletalMeshAsset()->GetResourceForRendering()->LODRenderData.Num());
+			Fixture.Mesh->MarkRenderStateDirty(); Stage = 5; Warmup = 0; return false;
+		}
+		if (Stage == 5 && ++Warmup < 6) { return false; }
+		if (Stage == 5)
+		{
+			Negative = CreateProducer(0, 5, Error);
+			if (!Negative || !Negative->Request(TEXT("skin-cache-disabled"), NegativeTicket, Error))
+			{ Test->AddError(TEXT("Missing-cache control admission: ") + Error); return true; }
+			Stage = 6; return false;
+		}
+		if (Stage == 6)
+		{
+			Negative->Pump(); FAnimationMeshGPUResult Result;
+			if (!Negative->Collect(Result)) { return false; }
+			RecordResult(Result);
+			Test->TestTrue(TEXT("Disabled Skin Cache is explicitly unavailable"), Result.Status == EAnimationMeshGPUStatus::Unavailable);
+			Test->TestFalse(TEXT("Missing-cache result provides an actionable reason"), Result.Error.IsEmpty());
+			Negative->Shutdown(); Negative.Reset(); Result = {};
+			Fixture.Mesh->SkinCacheUsage.Init(ESkinCacheUsage::Enabled,
+				Fixture.Mesh->GetSkeletalMeshAsset()->GetResourceForRendering()->LODRenderData.Num());
+			Fixture.Mesh->MarkRenderStateDirty();
+			Fixture.Mesh->SetForcedLOD(1); Stage = 7; Warmup = 0; return false;
+		}
+		if (Stage == 7 && ++Warmup < 6) { return false; }
+		if (Stage == 7)
+		{
+			auto EligibleCoarse = Fixture.Coarse->Capture(TEXT("lod-mismatch-cpu-eligible"), Error);
+			if (!EligibleCoarse) { Test->AddError(TEXT("Coarse CPU eligibility control: ") + Error); return true; }
+			Negative = CreateProducer(1, 5, Error);
+			if (!Negative || !Negative->Request(TEXT("lod-mismatch"), NegativeTicket, Error))
+			{ Test->AddError(TEXT("LOD mismatch control admission: ") + Error); return true; }
+			Stage = 8; return false;
+		}
+		if (Stage == 8)
+		{
+			Negative->Pump(); FAnimationMeshGPUResult Result;
+			if (!Negative->Collect(Result)) { return false; }
+			RecordResult(Result);
+			Test->TestTrue(TEXT("Rendered LOD mismatch is explicitly unavailable"), Result.Status == EAnimationMeshGPUStatus::Unavailable);
+			Test->TestFalse(TEXT("LOD mismatch provides an actionable reason"), Result.Error.IsEmpty());
+			Negative->Shutdown(); Negative.Reset(); Result = {};
+			Fixture.Mesh->SetForcedLOD(1); Stage = 9; Warmup = 0; return false;
+		}
+		if (Stage == 9 && ++Warmup < 6) { return false; }
+		if (Stage == 9)
+		{
+			FAnimationMeshLimits OneSnapshot = ReferenceLimits(); OneSnapshot.MaxSnapshots = 1;
+			Capacity = CreateProducer(0, 5, Error, OneSnapshot);
+			if (!Capacity || !Capacity->Request(TEXT("capacity-first"), CapacityTicket, Error))
+			{ Test->AddError(TEXT("Capacity control admission: ") + Error); return true; }
+			Stage = 10; return false;
+		}
+		if (Stage == 10)
+		{
+			Capacity->Pump(); FAnimationMeshGPUResult Result;
+			if (!Capacity->Collect(Result)) { return false; }
+			if (!Test->TestTrue(TEXT("First one-snapshot result completes"), Result.Status == EAnimationMeshGPUStatus::Completed && Result.Snapshot.IsValid()))
+			{ Test->AddError(Result.Error); return true; }
+			CapacityRetained = MoveTemp(Result);
+			Test->TestTrue(TEXT("Envelope admission precedes render-time snapshot capacity check"),
+				Capacity->Request(TEXT("capacity-blocked"), CapacityTicket, Error));
+			Stage = 11; return false;
+		}
+		if (Stage == 11)
+		{
+			Capacity->Pump(); FAnimationMeshGPUResult Blocked;
+			if (!Capacity->Collect(Blocked)) { return false; }
+			Test->TestTrue(TEXT("Retained snapshot makes the next acquisition unavailable"), Blocked.Status == EAnimationMeshGPUStatus::Unavailable && !Blocked.Snapshot);
+			Test->TestFalse(TEXT("Snapshot-capacity rejection is actionable"), Blocked.Error.IsEmpty());
+			Blocked = {};
+			CapacityRetained = {};
+			Test->TestTrue(TEXT("Released capacity readmits metadata"), Capacity->Request(TEXT("capacity-readmitted"), CapacityTicket, Error));
+			Stage = 12; return false;
+		}
+		if (Stage == 12)
+		{
+			Capacity->Pump(); FAnimationMeshGPUResult Result;
+			if (!Capacity->Collect(Result)) { return false; }
+			Test->TestTrue(TEXT("Released snapshot capacity completes again"), Result.Status == EAnimationMeshGPUStatus::Completed && Result.Snapshot.IsValid());
+			Capacity->Shutdown(); Capacity.Reset(); Result = {};
+			Stage = 13; return false;
+		}
+
+		if (Stage == 13)
+		{
+			// Two owners share admission and terminal state without cancellation crossing owners.
+			OwnerA = CreateProducer(0, 5, Error); OwnerB = CreateProducer(0, 5, Error);
+			if (!OwnerA || !OwnerB) { Test->AddError(TEXT("Owner isolation enrollment: ") + Error); return true; }
+			FAnimationMeshGPUTicket A, B;
+			Test->TestTrue(TEXT("First owner admits"), OwnerA->Request(TEXT("owner-a"), A, Error));
+			Test->TestTrue(TEXT("Second owner admits"), OwnerB->Request(TEXT("owner-b"), B, Error));
+			Test->TestTrue(TEXT("First owner cancels its ticket"), OwnerA->Cancel(A, TEXT("owner-a cancellation")));
+			Test->TestFalse(TEXT("First owner cannot cancel another owner's ticket"), OwnerA->Cancel(B, TEXT("cross-owner")));
+			OwnerA->Shutdown(); OwnerB->Shutdown();
+			FAnimationMeshGPUResult AResult, BResult;
+			Test->TestTrue(TEXT("First owner emits one terminal result"), OwnerA->Collect(AResult));
+			Test->TestTrue(TEXT("Second owner emits one terminal result"), OwnerB->Collect(BResult));
+			Test->TestFalse(TEXT("First owner terminal is exactly once"), OwnerA->Collect(CancelledAgain));
+			Test->TestFalse(TEXT("Second owner terminal is exactly once"), OwnerB->Collect(CancelledAgain));
+			OwnerA.Reset(); OwnerB.Reset(); AResult = FAnimationMeshGPUResult{}; BResult = FAnimationMeshGPUResult{};
+
+			DestroyProducer = CreateProducer(0, 5, Error);
+			if (!DestroyProducer) { Test->AddError(TEXT("Destruction enrollment: ") + Error); return true; }
+			FAnimationMeshGPUTicket DestroyTicket;
+			Test->TestTrue(TEXT("Destruction request admitted"), DestroyProducer->Request(TEXT("component-destroyed"), DestroyTicket, Error));
+			Fixture.Actor->Destroy();
+			DestroyProducer->Pump(); DestroyProducer->Shutdown();
+			FAnimationMeshGPUResult Destroyed;
+			Test->TestTrue(TEXT("Component destruction still emits a terminal result"), DestroyProducer->Collect(Destroyed));
+			Test->TestFalse(TEXT("Destruction result is emitted exactly once"), DestroyProducer->Collect(CancelledAgain));
+			RecordResult(Destroyed);
+			DestroyProducer.Reset(); Destroyed = FAnimationMeshGPUResult{};
+			Test->TestTrue(TEXT("Completed GPU results retain shared admission"), SharedBudget->GetStats().LiveReservations >= 2);
+			Retained.Reset();
+			Test->TestEqual(TEXT("All result leases release"), SharedBudget->GetStats().LiveReservations, 0);
+			WriteEvidence(TEXT("completed"));
+			Test->AddInfo(TEXT("GPU_MESH_OUTPUT=") + Directory);
+			return true;
+		}
+		return false;
+	}
+
+private:
+	TUniquePtr<FAnimationCaptureMeshGPU> CreateProducer(int32 InLOD, double Timeout, FString& Error,
+		FAnimationMeshLimits MeshLimits = ReferenceLimits())
+	{
+		FAnimationMeshGPULimits Limits; Limits.TimeoutSeconds = Timeout;
+		return FAnimationCaptureMeshGPU::Create(Fixture.View.World.Get(), Fixture.View.Viewport, Fixture.Mesh,
+			Enrollment(Fixture.Mesh, TEXT("gpu-panel"), InLOD), MeshLimits, Limits, SharedBudget.ToSharedRef(), Error);
+	}
+	void RecordGeometryEvidence(int32 InLOD, double CPUGPUDelta, double AnalyticMaximum)
+	{
+		auto Row = MakeShared<FJsonObject>(); Row->SetNumberField(TEXT("lod"), InLOD);
+		Row->SetNumberField(TEXT("max_cpu_gpu_error_cm"), CPUGPUDelta);
+		Row->SetNumberField(TEXT("max_cpu_analytic_error_cm"), AnalyticMaximum);
+		GeometryRows.Add(MakeShared<FJsonValueObject>(Row));
+	}
+	void RecordResult(const FAnimationMeshGPUResult& Result)
+	{
+		auto Row = MakeShared<FJsonObject>();
+		Row->SetStringField(TEXT("request_id"), Result.RequestId); Row->SetStringField(TEXT("error"), Result.Error);
+		Row->SetNumberField(TEXT("status"), int32(Result.Status)); Row->SetNumberField(TEXT("lod"), Result.Enrollment.AnalysisLOD);
+		Row->SetNumberField(TEXT("acquisition_frame"), double(Result.AcquisitionFrame));
+		Row->SetNumberField(TEXT("pose_revision"), double(Result.PoseRevision));
+		Row->SetNumberField(TEXT("prepare_ms"), Result.PrepareSeconds * 1000);
+		Row->SetNumberField(TEXT("setup_wait_ms"), Result.SetupWaitSeconds * 1000);
+		Row->SetNumberField(TEXT("decode_ms"), Result.DecodeSeconds * 1000);
+		Row->SetNumberField(TEXT("completion_latency_ms"), (Result.CompletedSeconds - Result.RequestedSeconds) * 1000);
+		Rows.Add(MakeShared<FJsonValueObject>(Row));
+	}
+	void WriteEvidence(const FString& Outcome)
+	{
+		if (Directory.IsEmpty()) { return; }
+		auto Root = MakeShared<FJsonObject>(); Root->SetStringField(TEXT("outcome"), Outcome);
+		Root->SetNumberField(TEXT("frozen_pose_seconds"), .25); Root->SetNumberField(TEXT("later_pose_seconds"), .75);
+		Root->SetArrayField(TEXT("results"), Rows);
+		Root->SetArrayField(TEXT("geometry_comparisons"), GeometryRows);
+		Root->SetStringField(TEXT("active_morph_control"), TEXT("deferred: transient fixture has no authored morph target; renderer-side priority injection would test a different lifetime"));
+		if (SharedBudget)
+		{
+			const auto Stats = SharedBudget->GetStats(); Root->SetNumberField(TEXT("admitted"), double(Stats.Admitted));
+			Root->SetNumberField(TEXT("rejected"), double(Stats.Rejected)); Root->SetNumberField(TEXT("peak_bytes"), double(Stats.PeakBytes));
+			Root->SetNumberField(TEXT("peak_reservations"), Stats.PeakReservations);
+		}
+		FString Json; FJsonSerializer::Serialize(Root, TJsonWriterFactory<>::Create(&Json));
+		Test->TestTrue(TEXT("GPU timing and error evidence saved"), FFileHelper::SaveStringToFile(Json, *(Directory / TEXT("gpu-controls.json"))));
+	}
+	void Cleanup()
+	{
+		if (GPU) { GPU->Shutdown(); } if (OwnerA) { OwnerA->Shutdown(); } if (OwnerB) { OwnerB->Shutdown(); }
+		if (DestroyProducer) { DestroyProducer->Shutdown(); } if (Negative) { Negative->Shutdown(); } if (Capacity) { Capacity->Shutdown(); }
+		GPU.Reset(); OwnerA.Reset(); OwnerB.Reset(); DestroyProducer.Reset(); Negative.Reset(); Capacity.Reset();
+		Retained.Reset(); CapacityRetained = {}; CPU.Reset();
+		if (DiagnosticView) { DiagnosticView->Shutdown(); DiagnosticView.Reset(); }
+		Fixture.Stop();
+		if (CacheMode) { CacheMode->SetWithCurrentPriority(PreviousCacheMode); CacheMode = nullptr; }
+	}
+	FAutomationTestBase* Test; double Started; double CPUAnalyticError = 0; bool Initialized = false; int32 Stage = 0, LOD = 0, Warmup = 0;
+	FMeshFixture Fixture; FString Directory; IConsoleVariable* CacheMode = nullptr; int32 PreviousCacheMode = 0;
+	TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget;
+	TUniquePtr<FAnimationCaptureMeshGPU> GPU, OwnerA, OwnerB, DestroyProducer, Negative, Capacity;
+	TUniquePtr<FViewportAsyncCapture> DiagnosticView;
+	FAnimationMeshGPUTicket ActiveTicket, NegativeTicket, CapacityTicket; FAnimationMeshGPUResult CancelledAgain, CapacityRetained;
+	TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe> CPU;
+	TArray<FAnimationMeshGPUResult> Retained; TArray<TSharedPtr<FJsonValue>> Rows, GeometryRows;
+};
+
 }
 
 void RegisterAnimationCaptureMeshHostCommands()
@@ -399,3 +737,18 @@ bool FMeshReferenceTest::RunTest(const FString&)
 	ADD_LATENT_AUTOMATION_COMMAND(FMeshReferenceControls(this));
 	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand()); return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMeshGPUTest, "AnimationAnalysis.Capture.Mesh.CachedPositions",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FMeshGPUTest::RunTest(const FString&)
+{
+	if (!FApp::CanEverRender()) { AddError(TEXT("GPU mesh fixture requires rendered host initialization")); return false; }
+	ADD_LATENT_AUTOMATION_COMMAND(FEditorLoadMap(TEXT("/Engine/Maps/Entry")));
+	ADD_LATENT_AUTOMATION_COMMAND(FWaitForShadersToFinishCompiling());
+	ADD_LATENT_AUTOMATION_COMMAND(FStartPIECommand(false));
+	ADD_LATENT_AUTOMATION_COMMAND(FMeshGPUControls(this));
+	ADD_LATENT_AUTOMATION_COMMAND(FEndPlayMapCommand()); return true;
+}
+
+#include "AnimationCaptureHostMeshCombined.h"
+#include "AnimationCaptureHostMeshLifecycle.h"

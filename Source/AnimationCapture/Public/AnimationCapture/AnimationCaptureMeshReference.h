@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AnimationCapture/AnimationCaptureBudget.h"
 
 class UMeshComponent;
 class FAnimationCaptureMeshReference;
@@ -17,11 +18,12 @@ struct ANIMATIONCAPTURE_API FAnimationMeshLimits
 	int64 MaxBytes = 0;
 };
 
-/** Share across CPU reference samplers. Not yet integrated with image/GPU admission. */
+/** Local mesh limits, optionally constrained by the same admission used by imagery. */
 class ANIMATIONCAPTURE_API FAnimationMeshBudget : public TSharedFromThis<FAnimationMeshBudget, ESPMode::ThreadSafe>
 {
 public:
-	explicit FAnimationMeshBudget(const FAnimationMeshLimits& InLimits);
+	explicit FAnimationMeshBudget(const FAnimationMeshLimits& InLimits,
+		TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget = nullptr);
 	~FAnimationMeshBudget();
 	const FAnimationMeshLimits& Limits() const;
 	int64 LiveBytes() const;
@@ -32,6 +34,7 @@ private:
 	TUniquePtr<FState> State;
 	friend class FAnimationCaptureMeshReference;
 	friend class FAnimationMeshSnapshot;
+	TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget;
 	bool Acquire(int64 Bytes);
 	void Release(int64 Bytes);
 };
@@ -99,9 +102,11 @@ public:
 	FAnimationMeshSnapshot& operator=(const FAnimationMeshSnapshot&) = delete;
 private:
 	friend class FAnimationCaptureMeshReference;
+	friend struct FAnimationMeshGPUState;
 	FAnimationMeshSnapshot(TSharedRef<FAnimationMeshBudget, ESPMode::ThreadSafe> InBudget, int64 InBytes);
 	TSharedRef<FAnimationMeshBudget, ESPMode::ThreadSafe> Budget;
 	int64 Bytes;
+	TSharedPtr<FAnimationCaptureReservation, ESPMode::ThreadSafe> SharedReservation;
 	FAnimationMeshData Value;
 };
 
@@ -119,6 +124,9 @@ public:
 	 * Repeated captures retain the same witnessed skeletal revision until finalized again. */
 	TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe> Capture(const FString& RequestId, FString& Error);
 private:
+	friend struct FAnimationMeshGPUState;
+	/** Internal preparation never exposes unfinished GPU position storage. */
+	TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> Prepare(const FString& RequestId, FString& Error, bool bComputePositions);
 	FAnimationCaptureMeshReference();
 	struct FState;
 	TUniquePtr<FState> State;

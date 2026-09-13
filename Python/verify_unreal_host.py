@@ -52,7 +52,8 @@ def editor_arguments(engine, host, output, *, rendered=False, expected_tests=Non
 
 def _build(engine, host, output, timeout, commands):
     run_process([engine / "Engine/Build/BatchFiles/Build.bat", "AnimationCaptureHostEditor", "Win64", "Development",
-                 f"-Project={host / 'AnimationCaptureHost.uproject'}", "-NoHotReload", "-WaitMutex"],
+                 f"-Project={host / 'AnimationCaptureHost.uproject'}", "-NoHotReload", "-NoHotReloadFromIDE",
+                 "-MaxParallelActions=2", "-WaitMutex"],
                 host, output, "host-build.log", timeout, commands)
 
 

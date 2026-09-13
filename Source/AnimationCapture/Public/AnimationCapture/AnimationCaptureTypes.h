@@ -6,6 +6,7 @@
 class AActor;
 class USkeletalMeshComponent;
 class USceneComponent;
+class FAnimationCaptureBudget;
 
 /** Explicit, fixed enrollment. Id is an opaque safe label serialized as legacy 'role'. */
 struct ANIMATIONCAPTURE_API FAnimationCaptureSubject
@@ -30,6 +31,8 @@ struct ANIMATIONCAPTURE_API FAnimationCaptureSettings
 	/** Async-only opt-in: force full resolution on the enrolled viewport while the session is active.
 	 * Does not disable AA; the caller must configure a supported view explicitly. */
 	bool bUseAsyncDiagnosticResolution = false;
+	/** Optional admission shared by image, PNG and consumer-owned producers. */
+	TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget;
 	double MaxWallSeconds = 60.0;
 	int32 MaxSamples = 7200;
 	int32 MaxFrames = 600;

@@ -51,6 +51,7 @@ struct FReadbackSlot
 	bool bRGBScheduled = false, bDepthScheduled = false, bRGBEnqueued = false, bDepthEnqueued = false;
 	bool bRGBDecoded = false, bDepthDecoded = false, bTerminal = false, bCollected = false;
 	int64 PackedBytes = 0, DecodedBytes = 0, ReservedBytes = 0;
+	TSharedPtr<FAnimationCaptureReservation, ESPMode::ThreadSafe> SharedBudgetReservation;
 	bool Retired() const { return !bRGBScheduled && !bDepthScheduled && !RGBReadback && !DepthReadback; }
 };
 }
@@ -60,6 +61,7 @@ struct FAnimationCaptureReadbackState
 	FCriticalSection Mutex;
 	FAnimationCaptureReadbackLimits Limits;
 	FAnimationCaptureReadbackStats Stats;
+	TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget;
 	TArray<TSharedPtr<FReadbackSlot, ESPMode::ThreadSafe>> Slots;
 	uint64 NextSerial = 1;
 	bool bClosed = false, bPollScheduled = false, bShutdownComplete = false;
@@ -233,8 +235,13 @@ void AddPackedCopy(FRDGBuilder& Graph, const TSharedRef<FState, ESPMode::ThreadS
 }
 }
 
-FAnimationCaptureReadbackProducer::FAnimationCaptureReadbackProducer(const FAnimationCaptureReadbackLimits& Limits)
-	: State(MakeShared<FState, ESPMode::ThreadSafe>()) { State->Limits = Limits; }
+FAnimationCaptureReadbackProducer::FAnimationCaptureReadbackProducer(const FAnimationCaptureReadbackLimits& Limits,
+	TSharedPtr<FAnimationCaptureBudget, ESPMode::ThreadSafe> SharedBudget)
+	: State(MakeShared<FState, ESPMode::ThreadSafe>())
+{
+	State->Limits = Limits;
+	State->SharedBudget = MoveTemp(SharedBudget);
+}
 
 FAnimationCaptureReadbackProducer::~FAnimationCaptureReadbackProducer()
 {
@@ -283,12 +290,19 @@ bool FAnimationCaptureReadbackProducer::Request(const FAnimationCaptureReadbackR
 		if (Existing->Result.Request.SessionId == Request.SessionId && Existing->Result.Request.RequestId == Request.RequestId)
 		{ return Reject(TEXT("Duplicate pending session/request identity")); }
 	}
+	// The fixed allowance covers bounded request/result strings, pose witnesses and slot bookkeeping.
+	const int64 SharedBytes = Reserved + 4096 + int64(Request.PoseRevisions.Num()) * 320;
+	TSharedPtr<FAnimationCaptureReservation, ESPMode::ThreadSafe> SharedReservation;
+	if (State->SharedBudget && !(SharedReservation = State->SharedBudget->Reserve(SharedBytes)))
+	{ return Reject(TEXT("Shared capture budget exhausted")); }
 	const auto Slot = MakeShared<FReadbackSlot, ESPMode::ThreadSafe>();
 	Slot->Serial = State->NextSerial++;
 	Slot->Result.Request = Request;
 	Slot->Result.Channels = Channels;
 	Slot->Result.AdmittedWallSeconds = FPlatformTime::Seconds();
 	Slot->PackedBytes = Packed; Slot->DecodedBytes = Decoded; Slot->ReservedBytes = Reserved;
+	Slot->SharedBudgetReservation = SharedReservation;
+	Slot->Result.SharedBudgetReservation = SharedReservation;
 	State->Slots.Add(Slot);
 	State->Stats.ReservedBytes += Reserved;
 	State->Stats.PackedOutputBytes += Packed;
