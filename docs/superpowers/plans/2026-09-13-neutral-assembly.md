@@ -139,7 +139,7 @@ update README, `docs/DEVELOPMENT_HANDOFF.md`, `docs/MIGRATION.md`,
   `AnimationAnalysis.Capture.Mesh.RigidAssembly` and the explicit GPU combined control.
 - [x] Execute the example and benchmark with a fresh installed wheel; archive native
   replay before restoration and rerun the example against the restored bundles.
-- [ ] Complete scoped reviews and one whole-branch review; fix substantiated defects.
+- [x] Complete scoped reviews and one whole-branch review; fix substantiated defects.
 - [x] Record source identities, exact tests, performance, gaps, budgets and consumer
   limits. Archive/hash needed artifacts without changing old archives.
 - [x] Commit verified docs and report the completed feature branch; no publication.
@@ -165,3 +165,8 @@ without it, independent native observations cannot meet the current pairing cont
 This adds an opt-in native API and requires a rebuild, while preserving old calls.
 Ruling: preserve ignored development/review artifacts and replay worktrees as evidence;
 archive them before any future cleanup. No cleanup or merge is needed to finish this slice.
+
+Completed 2026-09-13. All three scoped reviews and the final whole-branch review
+at6505fec approved without open findings. Full verification, local timings,
+compatibility and archive identity are recorded in docs/NEUTRAL_ASSEMBLY_DELIVERY.md.
+The local feature branch and evidence worktree remain preserved; no publication.
