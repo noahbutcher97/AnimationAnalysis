@@ -116,17 +116,17 @@ tolerance 0.0. Each expected sample has `sample_id`, `distance`, `intersection`:
 expectations, counts/repetitions and limits are fixed in the spec. A testable case
 builder may accept an explicit smaller count, but production defaults remain fixed.
 
-- [ ] Write tests for literal exact squared distances, insufficient results without
+- [x] Write tests for literal exact squared distances, insufficient results without
   numeric verdicts at an exhausted limit, deterministic input identity and no overwrite.
   ```python
   self.assertEqual(result.minimum_squared_distance, Fraction(2))
   self.assertIsNone(exhausted.minimum_distance)
   ```
-- [ ] Implement public-API fixtures and deterministic rotated repeats. Retain input
+- [x] Implement public-API fixtures and deterministic rotated repeats. Retain input
   hashes/recipes, source hash, raw times/counters/status, environment and settings.
-- [ ] Run fixed workloads using the final installed wheel in a separate process.
+- [x] Run fixed workloads using the final installed wheel in a separate process.
   Report completed and exhausted cases distinctly; do not modify the search kernel.
-- [ ] Commit verified tooling and review its independent expectations and timing scope.
+- [x] Commit verified tooling and review its independent expectations and timing scope.
 
 ### Task 4: Whole-delivery qualification and documentation
 
@@ -134,15 +134,15 @@ builder may accept an explicit smaller count, but production defaults remain fix
 update README, `docs/DEVELOPMENT_HANDOFF.md`, `docs/MIGRATION.md`,
 `docs/NATIVE_MESH_REFERENCE.md`, `docs/HOST_WORKFLOW.md` and plan completion ledger.
 
-- [ ] Run full core/tooling tests and `Python/verify_distribution.py` with retained output.
-- [ ] Run a fresh independent native host build and rendered suite, including
+- [x] Run full core/tooling tests and `Python/verify_distribution.py` with retained output.
+- [x] Run a fresh independent native host build and rendered suite, including
   `AnimationAnalysis.Capture.Mesh.RigidAssembly` and the explicit GPU combined control.
-- [ ] Execute the example and benchmark with a fresh installed wheel; archive native
+- [x] Execute the example and benchmark with a fresh installed wheel; archive native
   replay before restoration and rerun the example against the restored bundles.
 - [ ] Complete scoped reviews and one whole-branch review; fix substantiated defects.
-- [ ] Record source identities, exact tests, performance, gaps, budgets and consumer
+- [x] Record source identities, exact tests, performance, gaps, budgets and consumer
   limits. Archive/hash needed artifacts without changing old archives.
-- [ ] Commit verified docs and report the completed feature branch; no publication.
+- [x] Commit verified docs and report the completed feature branch; no publication.
 
 ## Execution ledger
 
