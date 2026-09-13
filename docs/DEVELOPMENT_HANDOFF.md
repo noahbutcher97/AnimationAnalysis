@@ -62,12 +62,18 @@ The [mesh record/replay slice](MESH_RECORD_DELIVERY.md) is now implemented in Py
 bounded replay with exclusive publication. Its [contract guide](MESH_OBSERVATIONS.md)
 and [completed plan](superpowers/plans/2026-09-11-mesh-observation-records.md) define the
 native producer's wire contract. The CPU/rigid reference and conservative effective
-inventory and bounded GPU/shared-budget slice are implemented. Next obtain
-consumer-owned integration evidence and qualify the next explicitly selected
-deformation/pose capability. No further broad tool audit is needed. Production morph support is deferred unless a
-required selected surface needs it; retain a small early positive morph experiment.
-Cloth, graph and material-effect coverage require separate qualification. No engine
-patch or consumer dependency update is included in either native delivery.
+inventory and bounded GPU/shared-budget slice are implemented. Next deliver core
+mesh analysis: topology-bound regions, surface distance, sampled intersection,
+separate containment rules and interval/gap reporting. Obtain consumer-owned
+integration evidence alongside neutral controls; qualify additional live pose
+acquisition only where it blocks the selected core workflow.
+
+Priority clarified 2026-09-13: morphs, cloth and material deformation are stretch
+goals after core functionality, offering optional higher fidelity and broader use.
+This supersedes earlier advice to schedule an early morph experiment. Keep their
+coverage explicitly unsupported or unknown where appropriate. No further broad
+tool audit is needed. No engine patch or consumer dependency update is included
+in either native delivery.
 
 ## Development host and production integration
 

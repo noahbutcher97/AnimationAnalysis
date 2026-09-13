@@ -144,5 +144,8 @@ allocator overhead, enrollment objects and caller-created copies. Metadata work
 still runs per request; immutable topology caching is a possible next optimization.
 
 Katana's owner retains adapter edits, dependency pins, consumer rebuilds and real
-gameplay/asset qualification. The next step is that integration evidence, then a
-focused positive experiment for the next chosen pose/deformation capability.
+gameplay/asset qualification. Priority clarified after delivery: next build core
+mesh analysis (regions, surface distance, sampled intersection, separate containment
+rules and interval reporting), supported by neutral and consumer integration evidence.
+Qualify additional pose acquisition only where it blocks that core workflow.
+Morphs, cloth and material deformation are stretch goals after core functionality.

@@ -21,6 +21,12 @@ and let users explicitly select capabilities, fidelity and resource cost for the
 needs. Bone-skinned geometry is a useful candidate capability and correctness baseline;
 it does not define the product's final surface coverage.
 
+Priority clarified 2026-09-13: finish core analysis functionality before extending
+deformation fidelity. Mesh acquisition enables region-based surface measurements,
+sampled intersection, separately defined containment and interval reporting.
+Morphs, cloth and material deformation are stretch goals after those core workflows
+are usable and verified. Their absence must remain explicit in current results.
+
 KatanaCombat is the accessible first consumer and a valuable reference project.
 Explore its actual assets, deformation features, workflows and analysis needs to
 ground requirements and test production usefulness. Combine those findings with a
@@ -52,15 +58,19 @@ and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its own
    asset findings. The [portable record/replay slice](MESH_RECORD_DELIVERY.md) is
    implemented in Python 0.3.0. CPU/rigid and bounded GPU bone producers now have
    [native qualification evidence](NATIVE_MESH_GPU_DELIVERY.md). Preserve explicit
-   unsupported coverage and defer production morph/cloth/graph/material extensions
-   until their positive controls pass. Katana's effective live component inventory
-   remains a prerequisite to consumer adequacy claims. Broader deformation and
-   animation-graph coverage, larger workloads and portable backend expansion remain open.
-2. Explicit region/support and temporal surfaces; offline intersection/containment
-   with supported topology/deformation limits, then separate depth/volume/swept work.
+   unsupported coverage. Katana's effective live component inventory remains a
+   prerequisite to consumer adequacy claims. Qualify additional pose acquisition
+   only where it blocks a selected core workflow; broader deformation is deferred.
+2. Next implement explicit regions, offline surface distance and sampled
+   intersection, with separate containment rules and interval/gap reporting.
+   Qualify supported topology and geometry limits. Support/sliding, penetration
+   depth, volume and swept analysis require their own scoped definitions and controls.
 3. Move remaining generic paired evaluation/preview calculations and offline stream,
    report, launcher and retention mechanisms out of consumer implementations.
 4. Keep Katana finisher/counter integrations and a neutral host exercising the same APIs.
+5. After core functionality, qualify opt-in morph, cloth and material-deformation
+   extensions for higher fidelity and broader use. These are stretch goals, not
+   prerequisites to the core analysis delivery.
 
 ## Whole-suite inventory carried from the consumer
 

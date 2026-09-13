@@ -8,14 +8,22 @@ add loaded-asset findings, real animation/rigid-prop evidence and qualified task
 It defines requirements and qualification criteria. The [portable mesh record/replay
 slice](MESH_RECORD_DELIVERY.md) implements the first contract layer; the
 [native reference delivery](NATIVE_MESH_REFERENCE_DELIVERY.md) qualifies explicit
-single-node CPU bone and rigid sampling. Cached-GPU and broader deformation backends
-remain pending. Existing capture defaults and formats remain unchanged.
+single-node CPU bone and rigid sampling. The [GPU delivery](NATIVE_MESH_GPU_DELIVERY.md)
+now qualifies bounded cached bone sampling. Broader deformation backends remain
+pending. Existing capture defaults and formats remain unchanged.
 
 ## Product contract
 
 Offer explicit choices for the evidence a user needs, with the most complete
 practical deformation coverage as the destination. Katana informs useful first
 workflows; neutral fixtures and additional use cases establish broader capability.
+
+Priority clarified 2026-09-13: finish core mesh analysis before extending deformation
+fidelity. Morphs, cloth and material deformation are stretch goals for optional
+higher fidelity and broader use after core functionality. This supersedes the
+earlier early-morph-experiment recommendation. The immediate analysis work is
+regions, surface distance, sampled intersection, separate containment rules and
+interval reporting using explicitly supported observations.
 
 Keep three outputs distinct: **deformed geometry**, **rendered visibility/appearance**,
 and **analysis against supplied criteria**. A mesh can include hidden triangles;
@@ -41,12 +49,12 @@ The **current evidence** column is deliberately narrower than the target product
 | Motion, pose and explicit proxies | Caller-nominated points, transforms and clocks | Existing foundation; retain as a useful inexpensive option without surface claims. |
 | Rigid props and attachments | Resident triangles, section identity and acquisition transform | Native ordinary static meshes and direct qualified skeletal attachments now have explicit enrollment, immutable triangles, transform/pose checks and replacement rejection. Broader component/parent types remain unqualified. |
 | Bone-deformed meshes | Effective weights, reference mapping, finalized pose, LOD and triangles | Native CPU and cached-GPU single-node references pass two LODs, multiple sections and retained-budget controls. The GPU delivery adds matching raster, combined admission and teardown evidence. General pose/deformation coverage remains open. |
-| Morphs and facial correctives | Effective deformed positions at the required stage; active state/provenance | Small early extension experiment; production support follows separately unless required by selected consumer surfaces. A bone reference cannot serve as the expected final morph result. |
-| Cloth and simulated clothing | Mapped render vertices after simulation/blending, simulation identity and section coverage | Planned qualification including mixed cloth/non-cloth sections and frozen/skipped updates; not a bone-only fallback. |
+| Morphs and facial correctives | Effective deformed positions at the required stage; active state/provenance | Stretch goal after core functionality, beginning with an independent positive control. A bone reference cannot serve as the expected final morph result. |
+| Cloth and simulated clothing | Mapped render vertices after simulation/blending, simulation identity and section coverage | Stretch goal after core functionality; qualify mixed cloth/non-cloth sections and frozen/skipped updates. Bone geometry cannot substitute for cloth coverage. |
 | Control Rig, IK, post-process and physics blending | The pose actually consumed by skinning, plus any later deformation | Source-driven previews do not establish live parity. Qualify ordering with a real skeletal component; separately identify simulation-driven surface changes. |
 | Mesh Deformer / ML deformation | Actual graph output, mapping and output-generation identity | Cached deformer access was source-inspected only. Requires independent expected displacements and execution/lifetime controls. |
 | Modular characters and LOD/weight changes | Explicit components, leader mapping, effective weights, topology/configuration generations | Required admission and invalidation contract; qualify supported cases or return precise missing coverage. Never mix old topology with new positions. |
-| Material vertex displacement | Positions after supported material evaluation for a declared view/pass | Future renderer-specific work. WPO/first-person transformations cannot be silently omitted from a final-surface request. |
+| Material vertex displacement | Positions after supported material evaluation for a declared view/pass | Stretch goal after core functionality, requiring renderer-specific qualification. WPO/first-person transformations cannot be silently omitted from a final-surface request. |
 | Masking, pixel-depth effects and transparency | Pass-specific raster evidence and declared visibility semantics | Separate from triangle geometry; holes or depth offsets in pixels are not automatically geometric holes/displacement. Ordinary RGB is not a complete depth/identity observation. |
 | Hair, geometry caches, changing topology and virtualized geometry | Representation-specific acquisition, topology correspondence and visibility | Separate adapters/qualification; unsupported today. Do not flatten all renderables into the skeletal triangle contract. |
 | Multi-view, temporal AA and other RHIs | Per-view/sample projection, temporal and backend identities | Existing depth path is narrowly UE 5.6 D3D11, single perspective, no AA. Extend by independently tested capabilities. |
@@ -99,10 +107,10 @@ Deliver **capability-aware rigid and skeletal mesh observations**, with replayab
 positions/topology and an explicitly qualified renderer path. Keep CPU bone skinning
 as an independent reference and opt-in geometry capability. Use cached GPU geometry
 for the initial renderer-deformed path, subject to qualification; do not rename it
-"final surface". Keep a small active-morph experiment early, with production morph
-support deferred unless the selected consumer surfaces require it. Cloth, deformer graphs
-and material effects remain explicit extension work until their positive controls
-pass; the API must already represent them without silent degradation.
+"final surface". Morph, cloth and material-deformation experiments and production
+support follow core functionality. Deformer graphs also remain separate extension
+work. Each extension needs positive controls before support is offered; the API
+must already represent missing coverage without silent degradation.
 
 The [record/replay implementation plan](superpowers/plans/2026-09-11-mesh-observation-records.md)
 is complete for the portable contract. Native CPU/reference controls and conservative
@@ -110,8 +118,10 @@ effective inventory are now in the existing host. [Bounded GPU acquisition and
 combined admission](NATIVE_MESH_GPU_DELIVERY.md) now have native qualification;
 complete production acceptance remains open. Complete the live consumer inventory described
 in the [Katana assessment](research/2026-09-11-katana-surface-requirements.md#required-consumer-qualification)
-before claiming that the qualified subset satisfies its actual needs. Any additional
-active required feature becomes qualification work, not an assumed exception.
+before claiming that the qualified subset satisfies its actual needs. An unsupported
+required feature leaves that use case insufficient. Qualify a pose acquisition path
+if it blocks a selected core workflow; defer use cases requiring stretch deformation
+coverage until those extensions are delivered.
 
 ### Acceptance criteria
 
@@ -177,10 +187,12 @@ readiness for one outstanding copy. It did not benchmark this combined productio
 pipeline. Katana's reported intermittent PNG saturation is a reason to test the
 combined budget, not evidence that a larger default allowance fixes the issue.
 
-## Later analysis and delivery boundaries
+## Next core analysis and delivery boundaries
 
-After acquisition qualification, add explicit regions and offline triangle
-distance/intersection with separate containment rules. Intersection and containment
+Use qualified acquisition to add explicit regions and offline triangle
+distance/intersection with separate containment rules, then interval reporting
+that preserves sampling gaps. Validate the shared services with neutral controls
+and consumer-owned integration. Intersection and containment
 are different predicates: a wholly enclosed mesh need not cross another surface.
 CGAL's established [polygon mesh processing reference](https://doc.cgal.org/latest/Polygon_mesh_processing/index.html)
 distinguishes intersection from bounded-side tests and states the closed-mesh and

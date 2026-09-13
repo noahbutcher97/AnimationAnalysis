@@ -14,6 +14,11 @@ enrollment and immutable geometry. [Bounded Skin Cache bone sampling and shared
 image/mesh admission](docs/NATIVE_MESH_GPU.md) are now explicit options. Full
 deformation coverage and mesh penetration remain outside the implemented scope.
 
+The next priority is core mesh analysis: explicit regions, surface separation,
+sampled intersection and interval reporting, with separate containment rules.
+Morphs, cloth and material deformation are stretch goals after core functionality,
+providing optional higher fidelity and broader surface coverage.
+
 Read the [delivery evidence](docs/RENDERED_READBACK_DELIVERY.md),
 [asynchronous API and compatibility](docs/ASYNC_READBACK.md), and
 [development handoff](docs/DEVELOPMENT_HANDOFF.md) for verification and consumer ownership.
