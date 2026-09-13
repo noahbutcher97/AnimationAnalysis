@@ -24,6 +24,21 @@ bool LimitsValid(const FAnimationMeshLimits& L)
 		&& L.MaxIndices > 0 && L.MaxIndices <= MAX_int32 / 4 && L.MaxSections > 0
 		&& L.MaxSections <= 64 && L.MaxBones > 0 && L.MaxBones <= 65536 && L.MaxBytes > 0;
 }
+// Preserve the original default policy's qualification exactly. Stronger source
+// and update witnesses belong to the explicit FinalizedAnimation policy below.
+bool QualifiedSingleNodePose(USkeletalMeshComponent* Mesh, FString& Error)
+{
+	if (!Mesh || Mesh->GetClass() != USkeletalMeshComponent::StaticClass() || !Mesh->IsRegistered()
+		|| Mesh->LeaderPoseComponent.IsValid() || Mesh->GetAnimationMode() != EAnimationMode::AnimationSingleNode
+		|| !Mesh->GetSingleNodeInstance() || Mesh->GetPostProcessInstance()
+		|| Mesh->GetPostProcessAnimBPClassToBeUsed() || Mesh->IsRunningParallelEvaluation()
+		|| Mesh->IsSimulatingPhysics() || Mesh->bBlendPhysics || Mesh->GetRefPoseOverride().IsValid())
+	{
+		Error = TEXT("unavailable: pose ordering requires finalized single-node animation without leader, post-process, physics blending or reference-pose override");
+		return false;
+	}
+	return true;
+}
 struct FPoseQualification
 {
 	UAnimInstance* Instance = nullptr;
@@ -36,7 +51,11 @@ bool QualifiedPose(USkeletalMeshComponent* Mesh, EAnimationMeshPosePolicy Policy
 	FPoseQualification& Out, FString& Error, bool bRequireReady, bool bAllowPostEvaluation = false)
 {
 	Out = {};
-	if (Policy != EAnimationMeshPosePolicy::SingleNode && Policy != EAnimationMeshPosePolicy::FinalizedAnimation)
+	if (Policy == EAnimationMeshPosePolicy::SingleNode)
+	{
+		return QualifiedSingleNodePose(Mesh, Error);
+	}
+	if (Policy != EAnimationMeshPosePolicy::FinalizedAnimation)
 	{
 		Error = TEXT("unavailable: invalid mesh pose policy");
 		return false;
@@ -187,24 +206,30 @@ TUniquePtr<FAnimationCaptureMeshReference> FAnimationCaptureMeshReference::Creat
 	auto& S = *Result->State;
 	S.Component = Component; S.Asset = Asset; S.PoseSource = Pose; S.Parent = Component->GetAttachParent();
 	S.PoseAsset = Pose ? Pose->GetSkeletalMeshAsset() : nullptr;
-	S.PoseInstance = Qualification.Instance; S.PoseProgram = Qualification.Program; S.PoseMode = Qualification.Mode;
+	if (E.PosePolicy == EAnimationMeshPosePolicy::FinalizedAnimation)
+	{
+		S.PoseInstance = Qualification.Instance; S.PoseProgram = Qualification.Program; S.PoseMode = Qualification.Mode;
+	}
 	S.Socket = Component->GetAttachSocketName(); S.Enrollment = E; S.Budget = Budget;
 	for (int32 I = 0; I < E.MaterialIds.Num(); ++I) { S.Materials.Add(Component->GetMaterial(I)); }
 	if (Pose)
 	{
 		S.Finalization = Pose->RegisterOnBoneTransformsFinalizedDelegate(FOnBoneTransformsFinalizedMultiCast::FDelegate::CreateLambda([State = &S]
 		{
-			USkeletalMeshComponent* Source = State->PoseSource.Get();
-			FPoseQualification Witness;
-			FString Ignored;
-			if (!Source || !QualifiedPose(Source, State->Enrollment.PosePolicy, Witness, Ignored, true, true)
-				|| Witness.Instance != State->PoseInstance.Get() || Witness.Program != State->PoseProgram.Get()
-				|| Witness.Mode != State->PoseMode)
+			if (State->Enrollment.PosePolicy == EAnimationMeshPosePolicy::FinalizedAnimation)
 			{
-				return;
+				USkeletalMeshComponent* Source = State->PoseSource.Get();
+				FPoseQualification Witness;
+				FString Ignored;
+				if (!Source || !QualifiedPose(Source, State->Enrollment.PosePolicy, Witness, Ignored, true, true)
+					|| Witness.Instance != State->PoseInstance.Get() || Witness.Program != State->PoseProgram.Get()
+					|| Witness.Mode != State->PoseMode)
+				{
+					return;
+				}
+				State->BoneRevision = Witness.BoneRevision; State->UpdateCounter = Witness.UpdateCounter;
 			}
 			++State->Serial; State->Frame = GFrameCounter;
-			State->BoneRevision = Witness.BoneRevision; State->UpdateCounter = Witness.UpdateCounter;
 			const auto* C = State->Component.Get(); State->WorldTime = C && C->GetWorld() ? C->GetWorld()->GetTimeSeconds() : -1;
 		}));
 	}
@@ -400,11 +425,12 @@ bool FAnimationCaptureMeshReference::CaptureBatch(
 			FPoseQualification Qualification;
 			if (!QualifiedPose(Pose, State.Enrollment.PosePolicy, Qualification, Error, true)
 				|| Pose != State.PoseSource.Get() || Pose->GetSkeletalMeshAsset() != State.PoseAsset.Get()
-				|| Qualification.Instance != State.PoseInstance.Get() || Qualification.Program != State.PoseProgram.Get()
-				|| Qualification.Mode != State.PoseMode || State.Serial != uint64(Data.PoseRevision)
+				|| State.Serial != uint64(Data.PoseRevision)
 				|| State.Frame != AcquisitionFrame || State.WorldTime != World->GetTimeSeconds()
-				|| State.BoneRevision != Qualification.BoneRevision
-				|| State.UpdateCounter != Qualification.UpdateCounter)
+				|| (State.Enrollment.PosePolicy == EAnimationMeshPosePolicy::FinalizedAnimation
+					&& (Qualification.Instance != State.PoseInstance.Get() || Qualification.Program != State.PoseProgram.Get()
+						|| Qualification.Mode != State.PoseMode || State.BoneRevision != Qualification.BoneRevision
+						|| State.UpdateCounter != Qualification.UpdateCounter)))
 			{
 				if (Error.IsEmpty()) { Error = TEXT("unavailable: component batch finalized-pose witness changed before publication"); }
 				return false;
@@ -440,10 +466,11 @@ TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshRef
 		FPoseQualification Qualification;
 		if (!QualifiedPose(Pose, E.PosePolicy, Qualification, Error, true)) { return nullptr; }
 		if (Pose != S.PoseSource.Get() || Pose->GetSkeletalMeshAsset() != S.PoseAsset.Get() || !S.Serial
-			|| Qualification.Instance != S.PoseInstance.Get() || Qualification.Program != S.PoseProgram.Get()
-			|| Qualification.Mode != S.PoseMode || S.Frame != GFrameCounter
-			|| S.WorldTime != Component->GetWorld()->GetTimeSeconds()
-			|| S.BoneRevision != Qualification.BoneRevision || S.UpdateCounter != Qualification.UpdateCounter)
+			|| S.Frame != GFrameCounter || S.WorldTime != Component->GetWorld()->GetTimeSeconds()
+			|| (E.PosePolicy == EAnimationMeshPosePolicy::FinalizedAnimation
+				&& (Qualification.Instance != S.PoseInstance.Get() || Qualification.Program != S.PoseProgram.Get()
+					|| Qualification.Mode != S.PoseMode || S.BoneRevision != Qualification.BoneRevision
+					|| S.UpdateCounter != Qualification.UpdateCounter)))
 		{ return Fail(TEXT("unavailable: no current finalized pose witness")); }
 		if (Static && (Component->IsUsingAbsoluteLocation() || Component->IsUsingAbsoluteRotation() || Component->IsUsingAbsoluteScale()
 			|| !(Component->GetRelativeTransform() * Pose->GetSocketTransform(S.Socket)).Equals(Component->GetComponentTransform(), 1.e-5)))

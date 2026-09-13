@@ -285,6 +285,37 @@ public:
 		Test->TestFalse(TEXT("Remaining shared owner retains admission"), Fixture.Bone->Capture(TEXT("still-full"), Error).IsValid());
 		Copy.Reset();
 		Test->TestEqual(TEXT("Last owner releases one admission"), Fixture.Budget->LiveSnapshots(), 3);
+		{
+			auto FinalizedEnrollment = Enrollment(Fixture.Mesh, TEXT("explicit-finalized-single-node"));
+			FinalizedEnrollment.PosePolicy = EAnimationMeshPosePolicy::FinalizedAnimation;
+			auto Finalized = FAnimationCaptureMeshReference::Create(Fixture.Mesh, FinalizedEnrollment, Fixture.Budget, Error);
+			if (!Finalized) { Test->AddError(Error); return true; }
+			Fixture.Mesh->RefreshBoneTransforms();
+			Test->TestTrue(TEXT("Explicit finalized policy initially qualifies the real SingleNode fixture"),
+				Finalized->Capture(TEXT("before-forced-reference"), Error).IsValid());
+			// This was accepted by the original default helper. Opting another observer
+			// into stronger qualification must not change the legacy observer's scope.
+			Fixture.Mesh->SetForceRefPose(true);
+			auto Legacy = FAnimationCaptureMeshReference::Create(Fixture.Mesh,
+				Enrollment(Fixture.Mesh, TEXT("legacy-forced-reference")), Fixture.Budget, Error);
+			Test->TestTrue(TEXT("Default SingleNode enrollment preserves legacy forced-reference scope"), Legacy.IsValid());
+			Fixture.Mesh->RefreshBoneTransforms();
+			auto DefaultForced = Fixture.Bone->Capture(TEXT("legacy-forced-reference"), Error);
+			Test->TestTrue(TEXT("Default SingleNode finalization and capture preserve legacy forced-reference scope"), DefaultForced.IsValid());
+			if (DefaultForced)
+			{
+				Test->TestEqual(TEXT("Legacy forced-reference state preserves default configuration hashing"),
+					DefaultForced->Data().ConfigurationId, Fine->Data().ConfigurationId);
+			}
+			DefaultForced.Reset();
+			Test->TestFalse(TEXT("Explicit finalized policy rejects that same forced-reference state"),
+				Finalized->Capture(TEXT("opt-in-forced-reference"), Error).IsValid());
+			Fixture.Mesh->SetForceRefPose(false);
+			Fixture.Mesh->TickAnimation(0, false);
+			Fixture.Mesh->RefreshBoneTransforms();
+			Test->TestTrue(TEXT("Explicit finalized policy recovers after supported finalization"),
+				Finalized->Capture(TEXT("restored-finalized-reference"), Error).IsValid());
+		}
 		auto TinyLimits = ReferenceLimits(); TinyLimits.MaxBytes = 100;
 		auto TinyBudget = MakeShared<FAnimationMeshBudget, ESPMode::ThreadSafe>(TinyLimits);
 		auto Tiny = FAnimationCaptureMeshReference::Create(Fixture.Prop, Enrollment(Fixture.Prop, TEXT("tiny")), TinyBudget, Error);

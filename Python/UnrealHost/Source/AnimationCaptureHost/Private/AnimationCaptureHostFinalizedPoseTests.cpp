@@ -267,11 +267,11 @@ struct FFinalizedPoseFixture : FGCObject
 	USkeletalMeshComponent* Body = nullptr;
 	USkeletalMeshComponent* AttachmentParent = nullptr;
 	UStaticMeshComponent* AttachedPart = nullptr;
-	USkeletalMesh* MeshAsset = nullptr;
-	UAnimSequence* Sequence = nullptr;
-	UAnimBlueprint* Blueprint = nullptr;
-	UAnimMontage* Montage = nullptr;
-	UPackage* AssetPackage = nullptr;
+	TObjectPtr<USkeletalMesh> MeshAsset = nullptr;
+	TObjectPtr<UAnimSequence> Sequence = nullptr;
+	TObjectPtr<UAnimBlueprint> Blueprint = nullptr;
+	TObjectPtr<UAnimMontage> Montage = nullptr;
+	TObjectPtr<UPackage> AssetPackage = nullptr;
 	TSharedRef<FAnimationMeshBudget, ESPMode::ThreadSafe> Budget =
 		MakeShared<FAnimationMeshBudget, ESPMode::ThreadSafe>(FinalizedLimits());
 	TUniquePtr<FAnimationCaptureMeshReference> BodyReference;
