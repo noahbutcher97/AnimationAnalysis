@@ -1,9 +1,12 @@
 # Finalized pose acquisition delivery
 
-Status: native and replay qualification complete; review and local candidate pending,
+Status: native, replay and archive qualification complete; final review pending,
 2026-09-13.
 Baseline is the completed neutral assembly delivery `a49850f`; its evidence remains
 in [the assembly report](NEUTRAL_ASSEMBLY_DELIVERY.md).
+The implementation is committed through
+`b0de8a677fd486c51244df8a3a120372c380a89b` on
+`feature/finalized-pose-acquisition`. No push, merge or consumer change is included.
 
 ## Consumer findings and reproduction
 
@@ -226,3 +229,28 @@ linked-instance state, socket/pose witnesses across the actual interval, selecte
 material coverage, complete region-analysis budgets and measured capture/export/
 analysis cadence. Broader morph, cloth, deformer and rendered-surface support remains
 a separate, evidence-driven extension; unsupported required coverage stays unknown.
+
+## Delivery evidence
+
+The local worktree is `Saved/FinalizedPoseWorktree` under AnimationAnalysis.
+Paths in this report are relative to that worktree. Its complete evidence archive is
+`Saved/FinalizedPoseDelivery-20260913-evidence.zip`, 20,856,528 bytes, SHA-256:
+
+`daaa37bbcbcb5587e840ee5746441e590bbf9c59aa1829a85ce56afcfb92ab4c`.
+
+All 1,451 payload entries and the embedded inventory were independently verified.
+The archive includes the selected replay, failed-run diagnostics, package/native/
+tooling reports, consumer report copies and reproduction, review records available
+at collection, and a source snapshot at `3c7d51f`. All 103 non-Markdown source files
+match the checkout; all 44 native staged files match the full passing run and all
+28 package modules match the verified wheel. `Saved/FinalizedPoseDelivery-readback.json`
+records these comparisons. The receipt-bearing delivery document is excluded from
+the source snapshot to avoid a circular archive hash. Later documentation/review
+receipts do not change the qualified implementation.
+
+Collection deleted no input files. Generated native PNGs were already archived,
+verified and cleaned by the native verifier as described above. Prior neutral and
+consumer archives remain intact. The ignored installed interpreter and reusable host
+build cache remain local and are not part of the delivery archive. The full native
+command is preserved in `Saved/FinalizedPoseNativeFull-20260913-01.command.json`;
+its expected set is the default 25 rendered controls plus explicit `Mesh.GPUCombined`.
