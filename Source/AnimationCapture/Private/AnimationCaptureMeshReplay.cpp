@@ -145,7 +145,9 @@ public:
 
 	void Number(double Value)
 	{
-		const FString Text = LexToString(Value);
+		// Match Unreal's JSON print policy so every finite double round-trips
+		// through a locale-independent JSON number without six-digit truncation.
+		const FString Text = FString::Printf(TEXT("%.17g"), Value);
 		const FTCHARToUTF8 Converted(*Text);
 		for (int32 Index = 0; Index < Converted.Length(); ++Index)
 		{

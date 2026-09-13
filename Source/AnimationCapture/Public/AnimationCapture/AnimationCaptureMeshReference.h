@@ -119,6 +119,13 @@ public:
 	static TUniquePtr<FAnimationCaptureMeshReference> Create(UMeshComponent* Component,
 		const FAnimationMeshEnrollment& Enrollment,
 		TSharedRef<FAnimationMeshBudget, ESPMode::ThreadSafe> Budget, FString& Error);
+	/** Capture a bounded ordered set of ordinary unparented static components during one
+	 * stable synchronous game-thread operation. Failure publishes no snapshots. */
+	static bool CaptureRigidBatch(
+		TConstArrayView<FAnimationCaptureMeshReference*> Samplers,
+		const FString& RequestId, int32 MaxComponents,
+		TArray<TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>>& OutSnapshots,
+		FString& Error);
 	~FAnimationCaptureMeshReference();
 	/** Failure contains no geometry; Error gives unavailable/admission reason.
 	 * Repeated captures retain the same witnessed skeletal revision until finalized again. */
@@ -126,7 +133,8 @@ public:
 private:
 	friend struct FAnimationMeshGPUState;
 	/** Internal preparation never exposes unfinished GPU position storage. */
-	TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> Prepare(const FString& RequestId, FString& Error, bool bComputePositions);
+	TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> Prepare(const FString& RequestId, FString& Error,
+		bool bComputePositions, TOptional<double> NativeAcquiredSeconds = {});
 	FAnimationCaptureMeshReference();
 	struct FState;
 	TUniquePtr<FState> State;

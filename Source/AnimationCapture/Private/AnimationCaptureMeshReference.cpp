@@ -141,7 +141,99 @@ TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureM
 	return Prepare(RequestId, Error, true);
 }
 
-TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshReference::Prepare(const FString& RequestId, FString& Error, bool bComputePositions)
+bool FAnimationCaptureMeshReference::CaptureRigidBatch(
+	TConstArrayView<FAnimationCaptureMeshReference*> Samplers,
+	const FString& RequestId, int32 MaxComponents,
+	TArray<TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>>& OutSnapshots,
+	FString& Error)
+{
+	Error.Reset();
+	OutSnapshots.Reset();
+	auto Fail = [&Error](const TCHAR* Reason)
+	{
+		Error = Reason;
+		return false;
+	};
+	if (!IsInGameThread())
+	{
+		return Fail(TEXT("unavailable: rigid batch capture requires the game thread"));
+	}
+	if (!Identity(RequestId) || MaxComponents < 1 || MaxComponents > 64
+		|| Samplers.IsEmpty() || Samplers.Num() > MaxComponents)
+	{
+		return Fail(TEXT("unavailable: invalid rigid batch request or component bound"));
+	}
+
+	TSet<const FAnimationCaptureMeshReference*> UniqueSamplers;
+	TSet<UMeshComponent*> UniqueComponents;
+	UWorld* World = nullptr;
+	for (const FAnimationCaptureMeshReference* Sampler : Samplers)
+	{
+		if (!Sampler || UniqueSamplers.Contains(Sampler))
+		{
+			return Fail(TEXT("unavailable: rigid batch observers must be non-null and unique"));
+		}
+		UniqueSamplers.Add(Sampler);
+		UMeshComponent* Component = Sampler->State->Component.Get();
+		if (!Component || !Component->IsRegistered() || !Component->GetWorld()
+			|| Component->GetWorld()->bInTick || Component->GetClass() != UStaticMeshComponent::StaticClass()
+			|| Component->GetAttachParent() || Component->IsSimulatingPhysics())
+		{
+			return Fail(TEXT("unavailable: rigid batch requires registered ordinary unparented static components outside world tick without physics"));
+		}
+		if (UniqueComponents.Contains(Component))
+		{
+			return Fail(TEXT("unavailable: rigid batch components must be unique"));
+		}
+		UniqueComponents.Add(Component);
+		if (!World)
+		{
+			World = Component->GetWorld();
+		}
+		else if (Component->GetWorld() != World)
+		{
+			return Fail(TEXT("unavailable: rigid batch components must share one world"));
+		}
+	}
+
+	const double AcquiredSeconds = FPlatformTime::Seconds();
+	const uint64 AcquisitionFrame = GFrameCounter;
+	if (!FMath::IsFinite(AcquiredSeconds) || AcquisitionFrame > MaxJsonInteger)
+	{
+		return Fail(TEXT("unavailable: rigid batch acquisition identity is invalid"));
+	}
+	TArray<TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>> Prepared;
+	Prepared.Reserve(Samplers.Num());
+	for (FAnimationCaptureMeshReference* Sampler : Samplers)
+	{
+		auto Snapshot = Sampler->Prepare(RequestId, Error, true, AcquiredSeconds);
+		if (!Snapshot)
+		{
+			return false;
+		}
+		Prepared.Add(MoveTemp(Snapshot));
+	}
+	if (GFrameCounter != AcquisitionFrame || !World || World->bInTick)
+	{
+		return Fail(TEXT("unavailable: rigid batch world or frame changed before publication"));
+	}
+	for (int32 Index = 0; Index < Samplers.Num(); ++Index)
+	{
+		UMeshComponent* Component = Samplers[Index]->State->Component.Get();
+		const auto& Data = Prepared[Index]->Data();
+		if (!Component || Component->GetWorld() != World || !Component->IsRegistered()
+			|| Component->GetAttachParent() || Component->IsSimulatingPhysics()
+			|| Data.FrameId != int64(AcquisitionFrame) || Data.AcquiredSeconds != AcquiredSeconds)
+		{
+			return Fail(TEXT("unavailable: rigid batch validity changed before publication"));
+		}
+	}
+	OutSnapshots = MoveTemp(Prepared);
+	return true;
+}
+
+TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshReference::Prepare(
+	const FString& RequestId, FString& Error, bool bComputePositions, TOptional<double> NativeAcquiredSeconds)
 {
 	Error.Reset();
 	auto Fail = [&Error](const TCHAR* Reason) -> TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe>
@@ -228,7 +320,7 @@ TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshRef
 	}
 	auto& D = Snapshot->Value;
 	D.Enrollment = E; D.RequestId = RequestId; D.ProducerId = Skeletal ? TEXT("unreal-cpu-bone-reference-v1") : TEXT("unreal-rigid-reference-v1");
-	D.AcquiredSeconds = FPlatformTime::Seconds(); D.FrameId = GFrameCounter;
+	D.AcquiredSeconds = NativeAcquiredSeconds.IsSet() ? NativeAcquiredSeconds.GetValue() : FPlatformTime::Seconds(); D.FrameId = GFrameCounter;
 	D.PoseRevision = Pose ? S.Serial : ++S.Serial;
 	D.ComponentToWorld = Component->GetComponentTransform().ToMatrixWithScale();
 	for (int32 Row = 0; Row < 4; ++Row) for (int32 Col = 0; Col < 4; ++Col)
