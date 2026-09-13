@@ -11,7 +11,10 @@ The next implemented slice is [native CPU bone/rigid reference sampling](NATIVE_
 Its [delivery report](NATIVE_MESH_REFERENCE_DELIVERY.md) records verification and limits.
 The next slice, [bounded GPU bone sampling and shared image/mesh admission](NATIVE_MESH_GPU.md),
 is implemented; its [delivery report](NATIVE_MESH_GPU_DELIVERY.md) gives exact
-tests, performance and archived replay. Katana's
+tests, performance and archived replay. Python 0.4.0 now implements
+[sampled mesh surface analysis](MESH_ANALYSIS.md); its
+[delivery report](MESH_ANALYSIS_DELIVERY.md) separates fresh offline qualification
+from historical native evidence. Katana's
 owner retains consumer edits, dependency pins, rebuilds and gameplay verification.
 
 ## Verified starting point
@@ -62,11 +65,12 @@ The [mesh record/replay slice](MESH_RECORD_DELIVERY.md) is now implemented in Py
 bounded replay with exclusive publication. Its [contract guide](MESH_OBSERVATIONS.md)
 and [completed plan](superpowers/plans/2026-09-11-mesh-observation-records.md) define the
 native producer's wire contract. The CPU/rigid reference and conservative effective
-inventory and bounded GPU/shared-budget slice are implemented. Next deliver core
-mesh analysis: topology-bound regions, surface distance, sampled intersection,
-separate containment rules and interval/gap reporting. Obtain consumer-owned
-integration evidence alongside neutral controls; qualify additional live pose
-acquisition only where it blocks the selected core workflow.
+inventory and bounded GPU/shared-budget slice are implemented. The first core mesh
+analysis slice now provides topology-bound regions, surface distance, sampled
+intersection and interval/gap reporting. Containment remains explicitly not evaluated.
+Next obtain consumer-owned integration evidence alongside the neutral controls:
+select useful region pairs and criteria, inventory their required surface coverage,
+and qualify additional live pose acquisition only where it blocks that workflow.
 
 Priority clarified 2026-09-13: morphs, cloth and material deformation are stretch
 goals after core functionality, offering optional higher fidelity and broader use.

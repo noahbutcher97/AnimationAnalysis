@@ -38,6 +38,20 @@ Canonical visual evidence uses `schema_version: 2` and frames with unique `file`
 
 `surfaces.measure_surface_relation` and `pixel_alignment.analyze_segment` accept explicit raster data and criteria. Images are decoded through the optional `images` module. Pixel/depth measurements and authored review records are separate from physical-contact or artistic acceptance. Passing a control establishes only the conditions it exercised.
 
+Python 0.4.0 adds `MeshRegion`, `MeshSelection`, `MeshPairSample`,
+`MeshAnalysisLimits` and `measure_mesh_pair` for bounded offline surface distance
+and sampled intersection using existing mesh records and explicit coverage
+requirements. `summarize_mesh_interval` preserves acquisition gaps and failed
+samples; it never infers continuous contact. Results retain both original input
+identities and achieved coverage, with detached JSON-compatible `to_mapping()`
+output. Native capture and mesh replay schema 1 remain compatible.
+
+Region ordinals refer to complete triangles in a specific topology. The exact
+rational reference distinguishes intersection from tolerance-based proximity;
+missing required deformation and exhausted work remain insufficient. Containment,
+penetration depth and swept intersection are not evaluated. All geometry, units,
+clocks, region mappings and requirements are explicit caller inputs.
+
 Shared offline services are available in version 0.2.0:
 
 - `integrity`: strict JSON/JSONL and finite numeric input, contained paths, RGB/RGBA PNG checks including CRCs and bounded decompressed scanlines. These checks need no image extra. Embedded visual evidence retains its separate signature/hash validation contract.

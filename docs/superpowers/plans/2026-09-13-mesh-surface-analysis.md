@@ -34,17 +34,17 @@ Interfaces: `is_degenerate(triangle)`; `triangle_distance_squared(a,b)` returns
 `distance_squared, first_point, second_point, first_triangle, second_triangle,
 triangle_tests, node_visits`. `SearchLimitError` exposes the two counts.
 
-- [ ] Add failing analytic geometry and search controls. Example independent expectation:
+- [x] Add failing analytic geometry and search controls. Example independent expectation:
   ```python
   a = tuple(tuple(Fraction(v) for v in p) for p in ((0,0,0),(2,0,0),(0,2,0)))
   b = tuple(tuple(Fraction(v) for v in p) for p in ((0,0,3),(2,0,3),(0,2,3)))
   self.assertEqual(triangle_distance_squared(a,b)[0], 9)
   ```
-- [ ] Run the two test modules; retain the expected missing-feature failure.
-- [ ] Implement exact candidate calculations and deterministic binary AABB traversal.
+- [x] Run the two test modules; observe the expected missing-feature failure.
+- [x] Implement exact candidate calculations and deterministic binary AABB traversal.
   Count before each triangle test/node visit; raise on exhausted bounds.
-- [ ] Verify crossing, coplanar, edge-edge, degeneracy, pruning and exhaustion controls.
-- [ ] Review against the spec and commit the verified kernel slice.
+- [x] Verify crossing, coplanar, edge-edge, degeneracy, pruning and exhaustion controls.
+- [x] Review against the spec and commit the verified kernel slice.
 
 ## Task 2: Regions, provenance and measured results
 
@@ -57,15 +57,15 @@ Interfaces: all public records and `measure_mesh_pair` specified in the design;
 method `exact-triangle-surfaces-v1`. Exact squared-distance numerator/denominator
 are decimal strings; all presentation numbers must be finite.
 
-- [ ] Add failing end-to-end fixtures with literal distances/intersections and
+- [x] Add failing end-to-end fixtures with literal distances/intersections and
   explicit `MeshRequirement`; a translated parallel panel must measure distance 3.
-- [ ] Implement bounded region normalization and content identity, eligibility,
+- [x] Implement bounded region normalization and content identity, eligibility,
   selected indexed reads, exact transforms, identity-only results and search wiring.
-- [ ] Check `result.surface_intersection is False` for a tiny nonzero gap even
+- [x] Check `result.surface_intersection is False` for a tiny nonzero gap even
   when `result.within_tolerance is True`; containment remains `not_evaluated`.
-- [ ] Add omitted-cloth/morph negative evidence, wrong topology/pose/time, selected
+- [x] Add omitted-cloth/morph negative evidence, wrong topology/pose/time, selected
   degeneracy, transform collapse, malformed limits, and budget-exhaustion tests.
-- [ ] Verify public serialization, source buffer independence and replay round trip;
+- [x] Verify public serialization, source buffer independence and replay round trip;
   commit the reviewed public measurement slice.
 
 ## Task 3: Interval evidence
@@ -76,28 +76,28 @@ Files: create `Python/src/animation_analysis/mesh_intervals.py`,
 Interface: `summarize_mesh_interval(results,interval,*,max_gap_seconds,max_samples)`
 returns an immutable summary with JSON-compatible `to_mapping()`.
 
-- [ ] Add failing controls for complete endpoints, a missing middle sample,
+- [x] Add failing controls for complete endpoints, a missing middle sample,
   insufficient observations, duplicate/reversed clocks and changing region/profile.
-- [ ] Implement bounded validation and gap reporting, preserving partial observed
+- [x] Implement bounded validation and gap reporting, preserving partial observed
   minimum and counts without claiming continuous contact.
-- [ ] Verify a sequence at 0, 0.5, 1 seconds passes a 0.5-second gap bound and fails
+- [x] Verify a sequence at 0, 0.5, 1 seconds passes a 0.5-second gap bound and fails
   a 0.25-second bound; neither result asserts between-sample behavior.
-- [ ] Review and commit the interval slice.
+- [x] Review and commit the interval slice.
 
 ## Task 4: Installed qualification and delivery
 
 Files: update `Python/pyproject.toml`, `Python/README.md`, README and active handoff/
 capability docs. Create `docs/MESH_ANALYSIS.md`, `docs/MESH_ANALYSIS_DELIVERY.md`.
 
-- [ ] Set the additive Python release to 0.4.0; keep historical delivery versions intact.
-- [ ] Run `python Python/verify_distribution.py --output Saved/MeshAnalysisDistribution`.
-- [ ] Run tooling controls and compare native paths to baseline `0813894`.
-- [ ] Exercise preserved native mesh replay through a fresh installed wheel;
+- [x] Set the additive Python release to 0.4.0; keep historical delivery versions intact.
+- [x] Run `python Python/verify_distribution.py --output Saved/MeshAnalysisDistribution-02`.
+- [x] Run tooling controls and compare native paths to baseline `0813894`.
+- [x] Exercise preserved native mesh replay through a fresh installed wheel;
   benchmark fixed region sizes and explicit exhausted bounds, recording context.
-- [ ] Independently review numerical decisions, eligibility, identity, bounds and
+- [x] Independently review numerical decisions, eligibility, identity, bounds and
   interval semantics; fix substantiated defects and rerun affected checks.
-- [ ] Document exact results, limits and deferred consumer qualification; commit
-  verified documentation and integrate locally without publication.
+- [x] Document exact results, limits and deferred consumer qualification.
+- [ ] Commit verified documentation and integrate locally without publication.
 
 ## Execution ledger
 
@@ -117,3 +117,31 @@ Ruling: the user's repeated approval and final proceed authorize the scoped desi
 and execution; routine API details do not require another permission round.
 Ruling: use the existing ignored `Saved` worktree convention and preserve old replay
 evidence; the new worktree is `Saved/MeshAnalysisWorktree` on `feature/mesh-surface-analysis`.
+
+## Completion evidence
+
+- `489322a`: reviewed exact kernel and bounded search; 21 controls.
+- `7b0df85`: public measurement API and evidence validation.
+- `521351a`: interval evidence and gap reporting.
+- `78c9d8a`: suppress invalid interval aggregates; additive exports and Python 0.4.0.
+- `89f0087`: preserve required subject/stream in interval criteria; independent
+  scoped re-review and all twelve interval tests passed.
+- Final distribution: 104 passed plus one optional-image skip without Pillow;
+  105 passed with the image extra. Repository tooling: 26 passed.
+- Fresh stage-only native verification and comparison: all 42 native files unchanged
+  against `0813894` after line-ending normalization; no new native build/runtime run.
+- Installed replay: three retained native GPU bundles and same-region controls pass.
+  Fixed offline timings, raw results and exhausted-bound evidence are in the
+  [delivery report](../../MESH_ANALYSIS_DELIVERY.md).
+- Verified archive: `Saved/MeshAnalysisDelivery-20260913-evidence.zip`, 147 payload
+  entries with complete size/SHA-256 readback. No images generated or cleaned.
+
+Numerical ruling: scale exact squared distance before float square root so a positive
+representable distance is not lost through premature squared-distance underflow.
+Identity ruling: only required pose frame/revision may vary in compatible interval
+criteria; required subject/stream stay bound. Invalid temporal identities suppress
+aggregates, while comparable coverage gaps preserve labelled partial observations.
+Coverage ruling: retain achieved exclusions and reasons as result metadata. Synthetic
+omitted-effect controls do not substitute for consumer effective-feature inventory.
+Next boundary: consumer-owned workflow qualification, followed by reassessment of
+conditional deformation deferral; no automatic extension or dependency update.

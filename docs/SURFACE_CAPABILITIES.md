@@ -191,12 +191,14 @@ readiness for one outstanding copy. It did not benchmark this combined productio
 pipeline. Katana's reported intermittent PNG saturation is a reason to test the
 combined budget, not evidence that a larger default allowance fixes the issue.
 
-## Next core analysis and delivery boundaries
+## Core analysis and delivery boundaries
 
-Use qualified acquisition to add explicit regions and offline triangle
-distance/intersection with separate containment rules, then interval reporting
-that preserves sampling gaps. Validate the shared services with neutral controls
-and consumer-owned integration. Intersection and containment
+Python 0.4.0 implements [explicit regions, offline triangle distance/intersection
+and sampled interval reporting](MESH_ANALYSIS.md), with
+[neutral controls and installed replay evidence](MESH_ANALYSIS_DELIVERY.md).
+Containment remains explicitly not evaluated. The next qualification needs
+consumer-owned region mappings, criteria and effective acquisition coverage;
+use that evidence to reassess conditional deformation deferral. Intersection and containment
 are different predicates: a wholly enclosed mesh need not cross another surface.
 CGAL's established [polygon mesh processing reference](https://doc.cgal.org/latest/Polygon_mesh_processing/index.html)
 distinguishes intersection from bounded-side tests and states the closed-mesh and

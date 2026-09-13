@@ -11,11 +11,14 @@ readback is available as an explicit opt-in. Python 0.3.0 adds
 [portable mesh records and bounded replay](docs/MESH_OBSERVATIONS.md). The native
 [CPU bone/rigid reference producer](docs/NATIVE_MESH_REFERENCE.md) adds explicit
 enrollment and immutable geometry. [Bounded Skin Cache bone sampling and shared
-image/mesh admission](docs/NATIVE_MESH_GPU.md) are now explicit options. Full
-deformation coverage and mesh penetration remain outside the implemented scope.
+image/mesh admission](docs/NATIVE_MESH_GPU.md) are now explicit options. Python 0.4.0
+adds [topology-bound regions, surface distance, sampled intersection and interval
+summaries](docs/MESH_ANALYSIS.md). Full deformation coverage, containment and
+penetration depth remain outside the implemented scope.
 
-The next priority is core mesh analysis: explicit regions, surface separation,
-sampled intersection and interval reporting, with separate containment rules.
+The next priority is qualifying this first usable analysis slice against a selected
+consumer workflow, including its required surface coverage and live pose support.
+Containment needs a separate definition and qualification.
 Morphs, cloth and material deformation are stretch goals after core functionality,
 providing optional higher fidelity and broader surface coverage.
 The [deferral review](docs/research/2026-09-13-deformation-deferral-review.md) records
@@ -30,6 +33,8 @@ verification. Native reference scope and integration evidence are recorded in
 [the native delivery](docs/NATIVE_MESH_REFERENCE_DELIVERY.md). The
 [GPU delivery report](docs/NATIVE_MESH_GPU_DELIVERY.md) records the new qualification,
 combined workload, replay archive and remaining consumer boundary.
+The [mesh analysis delivery](docs/MESH_ANALYSIS_DELIVERY.md) records installed Python
+tests, native-record replay compatibility, offline timings and analysis limits.
 
 ## Verification
 
