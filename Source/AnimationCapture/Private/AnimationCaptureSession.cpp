@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Noah Butcher. All Rights Reserved.
 #include "AnimationCapture/AnimationCaptureSession.h"
 #include "AnimationCapture/AnimationCaptureJson.h"
 #include "AnimationCapture/AnimationCaptureImageWriter.h"
