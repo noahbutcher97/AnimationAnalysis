@@ -90,5 +90,5 @@ not_evaluated. Reject shortened profile or altered acceptance expectations.
   package/source identity and report fresh versus reused evidence accurately.
 - [x] Record local performance, compatibility, retained Katana reproduction,
   addressed blockers and remaining consumer/GPU group/material limitations.
-- [ ] Archive/hash replay and logs, preserving old archives; complete final review
+- [x] Archive/hash replay and logs, preserving old archives; complete final review
   and commit a verified local candidate, with no publication or consumer edits.

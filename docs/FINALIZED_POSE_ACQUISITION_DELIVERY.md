@@ -1,11 +1,11 @@
 # Finalized pose acquisition delivery
 
-Status: native, replay and archive qualification complete; final review pending,
+Status: verified local candidate; final review and scoped fix review accepted,
 2026-09-13.
 Baseline is the completed neutral assembly delivery `a49850f`; its evidence remains
 in [the assembly report](NEUTRAL_ASSEMBLY_DELIVERY.md).
 The implementation is committed through
-`b0de8a677fd486c51244df8a3a120372c380a89b` on
+`49c2dcc8622dc2bfbeebc4a445acfbaeff8f9c5f` on
 `feature/finalized-pose-acquisition`. No push, merge or consumer change is included.
 
 ## Consumer findings and reproduction
@@ -65,12 +65,16 @@ behavior, with a failing-before/passing-after compatibility control and accepted
 scoped re-review. The stronger initialized-instance, pending-update, linked-instance,
 forced-reference-pose and update/bone witnesses belong to explicit FinalizedAnimation
 enrollment. Default configuration hashes and producer identities remain unchanged.
+Final review also caught a source-compatibility issue in the enrollment aggregate.
+Commit `49c2dcc` appends the new policy after the existing material array, preserving
+old positional initializers. A real C2440 compilation failure before the correction
+and passing material/default-policy assertions afterward establish that regression.
 
 Katana retains ownership of pin updates, adapter changes, assets, rebuild and fresh
 live interval qualification. Do not switch its live pose mode or retime records.
 Required unsupported material/raster effects remain insufficient. Containment,
 penetration, swept collision, physical contact and artistic acceptance remain outside
-this change. Candidate identity will be recorded after review.
+this change. Candidate identity and accepted qualification are recorded in this report.
 
 The shared changes address both reproduced blockers at their source. The explicit
 `FinalizedAnimation` policy admits qualified ordinary AnimBlueprint components and
@@ -97,30 +101,33 @@ check these prerequisites; CPU reference batching does not depend on a GPU view.
 
 ## Native qualification
 
-The independent full run `Saved/FinalizedPoseNativeFull-20260913-01` passed all
-26 exact controls at native commit `949bedd`, using UE 5.6.1 CL 44394996/D3D11.
+The final full run `Saved/FinalizedPoseNativeFull-20260913-02` passed all
+26 exact controls using UE 5.6.1 CL 44394996/D3D11. The run preceded commit
+`49c2dcc`; all tested source bytes match that committed candidate.
 There were no missing, extra, duplicate, failed or skipped tests. The set includes
 existing RGB/depth, lifecycle, budget, renderer-mismatch, rigid-batch and GPU-combined
 controls plus the new real graph/slot/montage and legacy-default controls. All 44
 staged source files and both verifier tools match the checkout byte for byte.
 
-The isolated build took 48.594 s and the editor run 56.500 s, including startup and
+The isolated build took 98.985 s and the editor run 61.172 s, including startup and
 teardown. No source warnings or compiler errors remain. UBT reports the existing
 Visual Studio compiler-preference warning. This is separate from the corrected
 fixture GC warnings. The verifier removed its temporary host.
 
-All 254 replay payload entries and the embedded inventory were independently
+All 256 replay payload entries and the embedded inventory were independently
 verified. Archive SHA-256:
-`c14727dda13f450e6e4fae3c1edf093500275c82334fa8491834f733ed43fcf5`.
-The verifier deleted exactly the 60 inventoried PNGs only after archive verification;
+`8220fae86a18d9c4d81390233ce37d592504e0a1f3357c9ebb1d314e84e7d576`.
+The verifier deleted exactly the 62 inventoried PNGs only after archive verification;
 all other retained files were checked against their recorded hashes. The finalized
-fixture's 46 files were restored under `Saved/FinalizedPoseReplayRestored-04`.
-`Saved/FinalizedPoseNativeFull-readback.json` records source, test and cleanup checks.
+fixture's 46 files were restored under `Saved/FinalizedPoseReplayRestored-05`.
+`Saved/FinalizedPoseNativeFull-final-readback.json` records source, test and cleanup
+checks. The earlier full run remains retained; this run produced two more async
+session PNGs. Each run's exact file inventory and deletion receipt is preserved.
 
-Five small CPU pair captures took 0.0546–0.0666 ms (median 0.0585 ms). One GPU sample
-took 0.0399 ms preparation, 0.00470 ms capture, 0.00020 ms setup wait and 0.0970 ms
-decode. Its acquisition-to-completion interval was 20.7901 ms; deliberate later
-collection occurred after 53.3396 ms, after montage advance and source retirement.
+Five small CPU pair captures took 0.0697–0.0930 ms (median 0.0719 ms). One GPU sample
+took 0.0435 ms preparation, 0.00560 ms capture, 0.00020 ms setup wait and 0.0070 ms
+decode. Its acquisition-to-completion interval was 21.5461 ms; deliberate later
+collection occurred after 53.9623 ms, after montage advance and source retirement.
 The original GPU geometry/revision was retained. Peak admitted bytes were 11,550,560;
 this is producer reservation accounting, not process RSS. These tiny-fixture samples
 do not establish consumer-size costs, sustained cadence, a quiet system or a thermal
@@ -164,25 +171,25 @@ features and five explicit exclusions; incomplete or inactive substitutions cann
 qualify. The fixed profile also enforces five distinct frames and differing first-pair
 observer revisions. Directory and Windows symlink manifest rejection controls passed.
 
-Final reports are under `Saved/FinalizedPoseInstalledQualification-Task2-Fix1-01`;
-`Saved/FinalizedPoseInstalledQualification-Fix1-readback.json` is the controller's
+Final reports are under `Saved/FinalizedPoseInstalledQualification-FinalFix-01`;
+`Saved/FinalizedPoseInstalledQualification-FinalFix-readback.json` is the controller's
 independent readback. Earlier failing and initial passing runs remain retained.
 
 Independent readback checked all 41 explicit input hashes, bound each reported
 completion/request/pose/acquisition to its native record, and compared reports
 after removing only elapsed analysis timings. Expected distances were 25, 15, 5,
 0 and 0 cm, with intersections only in the last two pairs. The actual maximum
-sample gap was 0.0186662 s; between-sample geometry remains unevaluated.
+sample gap was 0.0218783 s; between-sample geometry remains unevaluated.
 
-The final original-evidence Python pair analyses took 75.0388, 76.4377, 67.9673,
-10.7160 and 10.9660 ms. These are offline search costs, separate from the native
+The final original-evidence Python pair analyses took 72.8005, 71.0821, 66.5027,
+11.1119 and 11.2530 ms. These are offline search costs, separate from the native
 capture timings above. Their inputs are a two-triangle body and a twelve-triangle
 rigid part. Neither this small sample nor a sufficiently short capture gap proves
 sustained 30 Hz analysis, especially for Katana's substantially larger selected
-regions. End-to-end CLI wall times were 396.079 ms for original evidence and
-439.292 ms for restored evidence; reports retain their individual elapsed timings.
+regions. The reports retain their individual elapsed timings; process launch and
+replay decode are additional costs outside the pair-analysis measurements.
 
-After native qualification and candidate review, the consumer owner can test the
+The consumer owner can now test the
 smallest change against its retained authored-reference and live finisher workflow:
 
 1. Rebuild against the candidate and explicitly select `FinalizedAnimation` when
@@ -219,9 +226,14 @@ GPU support also does not establish synchronized GPU/body-and-rigid pair acquisi
   behind explicit FinalizedAnimation enrollment. This protects existing consumers
   but requires callers to opt in to the new witnesses.
 
+The final source-compatibility correction preserves old positional aggregate callers.
+Native/source qualification and installed original/restored replay were refreshed
+afterward; the unchanged Python tooling and distribution results remain applicable.
+
 The task review also identified a maintainability issue in the large native fixture:
 asset construction, lifetime, controls and replay publication share one file. Final
-review will assess whether helper extraction is needed for this delivery.
+review accepted helper extraction as deferred until the fixture next expands. The
+cost is continued maintenance/review complexity, without weakening current controls.
 
 The verified shared changes establish a candidate for Katana to rebuild and test.
 They do not establish successful consumer integration. Remaining checks include live
@@ -234,16 +246,16 @@ a separate, evidence-driven extension; unsupported required coverage stays unkno
 
 The local worktree is `Saved/FinalizedPoseWorktree` under AnimationAnalysis.
 Paths in this report are relative to that worktree. Its complete evidence archive is
-`Saved/FinalizedPoseDelivery-20260913-evidence.zip`, 20,856,528 bytes, SHA-256:
+`Saved/FinalizedPoseDelivery-20260913-final.zip`, 25,148,861 bytes, SHA-256:
 
-`daaa37bbcbcb5587e840ee5746441e590bbf9c59aa1829a85ce56afcfb92ab4c`.
+`3f70faaa086150b51e96f11b1ead9527329c0b621ef8c59dee4f8de8a83bcd75`.
 
-All 1,451 payload entries and the embedded inventory were independently verified.
+All 1,734 payload entries and the embedded inventory were independently verified.
 The archive includes the selected replay, failed-run diagnostics, package/native/
 tooling reports, consumer report copies and reproduction, review records available
-at collection, and a source snapshot at `3c7d51f`. All 103 non-Markdown source files
+at collection, and a source snapshot at `49c2dcc`. All 103 non-Markdown source files
 match the checkout; all 44 native staged files match the full passing run and all
-28 package modules match the verified wheel. `Saved/FinalizedPoseDelivery-readback.json`
+28 package modules match the verified wheel. `Saved/FinalizedPoseDelivery-final-readback.json`
 records these comparisons. The receipt-bearing delivery document is excluded from
 the source snapshot to avoid a circular archive hash. Later documentation/review
 receipts do not change the qualified implementation.
@@ -252,5 +264,23 @@ Collection deleted no input files. Generated native PNGs were already archived,
 verified and cleaned by the native verifier as described above. Prior neutral and
 consumer archives remain intact. The ignored installed interpreter and reusable host
 build cache remain local and are not part of the delivery archive. The full native
-command is preserved in `Saved/FinalizedPoseNativeFull-20260913-01.command.json`;
+command is preserved in `Saved/FinalizedPoseNativeFull-20260913-02.command.json`;
 its expected set is the default 25 rendered controls plus explicit `Mesh.GPUCombined`.
+
+The earlier delivery archive remains intact at
+`Saved/FinalizedPoseDelivery-20260913-evidence.zip`, SHA-256
+`daaa37bbcbcb5587e840ee5746441e590bbf9c59aa1829a85ce56afcfb92ab4c`.
+It records the pre-aggregate-fix source and is superseded for candidate qualification
+by the final archive above.
+
+## Review outcome
+
+The whole-branch review covered `a49850f..abac430`; its one Important finding was
+corrected in `49c2dcc` and accepted by the scoped `abac430..49c2dcc` re-review.
+No Critical or Important issue remains open. The native fixture decomposition Minor
+is accepted as deferred. Reports are retained under
+`.superpowers/sdd/2026-09-13-finalized-pose-acquisition/` as `final-review.md`,
+`final-fix-report.md` and `final-re-review.md`, and included in the final archive.
+Later plan-completion and receipt edits change documentation only. The implementation
+is ready for a consumer-owned rebuild and integration trial; it has not been pushed
+or merged, and no consumer asset, adapter or dependency pin was modified.
