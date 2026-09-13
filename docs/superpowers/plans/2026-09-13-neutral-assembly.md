@@ -25,7 +25,8 @@ consume explicit manifests/criteria and measure ordinary and difficult workloads
 ### Task 1: Synchronous rigid batches and native assembly
 
 **Files:** Modify `Source/AnimationCapture/Public/AnimationCapture/AnimationCaptureMeshReference.h`,
-`Source/AnimationCapture/Private/AnimationCaptureMeshReference.cpp`, `Python/host_tools.py`;
+`Source/AnimationCapture/Private/AnimationCaptureMeshReference.cpp`,
+`Source/AnimationCapture/Private/AnimationCaptureMeshReplay.cpp`, `Python/host_tools.py`;
 create `Python/UnrealHost/Source/AnimationCaptureHost/Private/AnimationCaptureHostAssemblyTests.cpp`.
 
 **Interface:**
@@ -42,24 +43,27 @@ components in one non-ticking world, without physics, qualify for this batch API
 Validate count (1..MaxComponents, MaxComponents 1..64) and duplicates before output
 allocation. Boundaries and transactional release follow the spec.
 
-- [ ] Add host controls first, initially exercising individual captures: their
+- [x] Add host controls first, initially exercising individual captures: their
   acquired stamps differ, demonstrating why paired time cannot be assumed.
-- [ ] Add batch assertions with independent literal identities and known geometry:
+- [x] Add batch assertions with independent literal identities and known geometry:
   ```cpp
   TestEqual(TEXT("Shared acquisition"), Pair[0]->Data().AcquiredSeconds, Pair[1]->Data().AcquiredSeconds);
   TestTrue(TEXT("Completion follows acquisition"), Pair[1]->Data().CompletedSeconds >= Pair[1]->Data().AcquiredSeconds);
   TestEqual(TEXT("Failed batch leaves no snapshots"), Pair.Num(), 0);
   TestEqual(TEXT("Failed batch releases admission"), Budget->LiveBytes(), int64(0));
   ```
-- [ ] Implement batch preparation with native common stamp, per-input completion
+- [x] Implement batch preparation with native common stamp, per-input completion
   and existing budget ownership. Never rewrite exported observations.
-- [ ] Implement latent five-sample cube fixture and the exact `assembly.json` contract
+- [x] Preserve double precision when exporting native replay numbers; assert exact
+  acquisition/completion and non-six-decimal transform round trips. The observed
+  `LexToString(double)` six-decimal output cannot satisfy explicit pair identities.
+- [x] Implement latent five-sample cube fixture and the exact `assembly.json` contract
   from the spec. Example role IDs: component/subject `fixed-part` and `moving-part`,
   stream `assembly`, generation 1, regions `fixed-surface` and `moving-surface`.
-- [ ] Add `AnimationAnalysis.Capture.Mesh.RigidAssembly` to default rendered tests.
+- [x] Add `AnimationAnalysis.Capture.Mesh.RigidAssembly` to default rendered tests.
   Build and run the exact new test through `Python/verify_unreal_host.py`, retaining
   failure and successful evidence directories. Run affected tooling checks.
-- [ ] Commit the native slice and submit its source diff plus runtime evidence for review.
+- [x] Commit the native slice and submit its source diff plus runtime evidence for review.
 
 ### Task 2: Installed replay-to-report example
 
@@ -83,7 +87,7 @@ Record limits: 64 vertices, 128 indices, 4 sections, 8192 payload bytes,
 tolerance 0.0. Each expected sample has `sample_id`, `distance`, `intersection`:
 `step-00`..`step-04`, distances `[40,10,0,0,40]`, flags `[false,false,true,true,false]`.
 
-- [ ] Write tests using explicit synthetic cube records and literal expected distances;
+- [x] Write tests using explicit synthetic cube records and literal expected distances;
   run and retain the missing-feature failure before implementation.
   ```python
   report = evaluate_run(run_directory, criteria)
@@ -91,15 +95,15 @@ tolerance 0.0. Each expected sample has `sample_id`, `distance`, `intersection`:
   self.assertEqual([r['minimum_distance'] for r in report['measurements']], [40,10,0,0,40])
   self.assertEqual(report['interval']['between_samples'], 'not_evaluated')
   ```
-- [ ] Implement bounded strict inputs and explicit replay reads, then public region,
+- [x] Implement bounded strict inputs and explicit replay reads, then public region,
   requirement, pair measurement and interval calls. Role declarations and sample
   frame/revisions bind requirements. Preserve completion separately and hash inputs.
-- [ ] Verify missing middle bundle cannot yield overall success even when the
+- [x] Verify missing middle bundle cannot yield overall success even when the
   surviving interval gaps meet criteria. Verify wrong configuration/topology/pose,
   malformed criteria, nonfinite/duplicate fields and exclusive output handling.
-- [ ] Add labelled in-memory negative controls from the spec; source files remain
+- [x] Add labelled in-memory negative controls from the spec; source files remain
   unchanged. Controls may not turn primary observed failures into success.
-- [ ] Run the example on fresh native output through an installed wheel; commit
+- [x] Run the example on fresh native output through an installed wheel; commit
   after focused tests and independent review of the manifest/report boundary.
 
 ### Task 3: Bounded difficult-workload measurements

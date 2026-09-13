@@ -34,6 +34,36 @@ on the game thread. Failed enrollment/acquisition returns no geometry and a spec
 `Error`; callers retain their request ID and handle that unavailable result. This
 synchronous API does not create terminal failure bundles or an asynchronous queue.
 
+## Paired rigid acquisition
+
+Use `CaptureRigidBatch` when multiple independent rigid parts must describe one
+game-thread state. Separate `Capture` calls retain separate acquisition times.
+
+```cpp
+TArray<FAnimationCaptureMeshReference*> Samplers{Fixed.Get(), Moving.Get()};
+TArray<TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>> Pair;
+if (FAnimationCaptureMeshReference::CaptureRigidBatch(
+        Samplers, TEXT("sample-01"), 2, Pair, Error))
+{
+    // Pair follows Samplers order. Each snapshot keeps its actual completion time.
+}
+```
+
+The explicit maximum component count is 1..64 and must admit the supplied nonempty
+list. All participants must be different registered ordinary unparented static
+components in one world, outside world tick and without physics simulation. The
+operation observes existing state synchronously; it does not tick, drive poses,
+yield to caller code or combine unrelated acquisitions after the fact. Skeletal
+and attached-component batching require separate qualification.
+
+Every output receives the shared native acquisition stamp and frame at preparation,
+with its original component identity, observer revision and actual completion time.
+Failure leaves no partial output and releases this call's partial reservations.
+Retained outputs still consume their existing per-sampler/shared budgets. Rebuild
+native callers to use the new opt-in API; existing calls and replay schema stay
+compatible. The [neutral assembly example](NEUTRAL_ASSEMBLY.md) exercises this path
+through replay, region measurements and interval reporting.
+
 ## Qualified capability and rejection
 
 - Ordinary `USkeletalMeshComponent`, single-node animation, fixed effective weights
@@ -86,6 +116,9 @@ exports against one reservation. It writes [mesh replay schema 1](MESH_OBSERVATI
 with centimetres, Unreal left-handed Z-up coordinates and a row-vector matrix.
 Both clocks use `unreal-monotonic`; publication does not replace acquisition or
 CPU completion time. Python 0.3.0 reads the same schema without changes.
+Fresh exports use double round-trip precision for JSON clocks and transforms.
+Earlier exports used six decimals; they remain readable but cannot recover lost
+precision. New record byte hashes therefore differ without a schema change.
 
 Supply an existing stable trusted root and one portable ASCII child name. The writer
 rejects reparse roots, unsafe names and existing bundles, flushes exclusive files,

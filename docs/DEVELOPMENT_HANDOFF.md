@@ -17,6 +17,14 @@ tests, performance and archived replay. Python 0.4.0 now implements
 from historical native evidence. Katana's
 owner retains consumer edits, dependency pins, rebuilds and gameplay verification.
 
+The [neutral assembly example](NEUTRAL_ASSEMBLY.md) adds bounded synchronous rigid
+batch acquisition and an installed-package capture-to-report workflow. It qualifies
+independent unparented rigid parts and preserves actual sample gaps; it does not
+extend arbitrary live skeletal pose support. Consumer evidence still determines
+which additional acquisition capability is needed next.
+The [assembly delivery report](NEUTRAL_ASSEMBLY_DELIVERY.md) records tests, compatibility,
+offline costs, archived replay and remaining limits.
+
 ## Verified starting point
 
 Implementation baseline: `ba13149d3318f80d3098958cd1d2cd52bba3e5d1`.

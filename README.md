@@ -35,6 +35,10 @@ verification. Native reference scope and integration evidence are recorded in
 combined workload, replay archive and remaining consumer boundary.
 The [mesh analysis delivery](docs/MESH_ANALYSIS_DELIVERY.md) records installed Python
 tests, native-record replay compatibility, offline timings and analysis limits.
+The [neutral assembly example](docs/NEUTRAL_ASSEMBLY.md) connects synchronized rigid
+capture, explicit replay regions and sampled interval reports through those APIs.
+Its [delivery report](docs/NEUTRAL_ASSEMBLY_DELIVERY.md) records qualification,
+difficult-workload measurements and replay retention.
 
 ## Verification
 
@@ -124,9 +128,9 @@ python Python/verify_unreal_host.py --engine "C:/Program Files/Epic Games/UE_5.6
 
 The verifier stages plugin/host source, builds and runs native controls, preserves
 observations/logs and verified replay archives, then removes its temporary host.
-NullRHI runs five portability controls; `--rendered` runs all sixteen default controls,
-including geometry, delayed readback, lifecycle, independent sessions and console
-inspection. [Prepare/launch instructions](docs/HOST_WORKFLOW.md) use the same fixtures
+NullRHI exercises lifecycle/admission and topology identity; `--rendered` adds
+geometry, mesh acquisition, delayed readback, lifecycle and console inspection.
+The exact test inventory and [prepare/launch instructions](docs/HOST_WORKFLOW.md) use the same fixtures
 in a retained interactive host, with no gameplay modules or project assets.
 Katana's compatibility session, discovery, default points, telemetry switches,
 combat/warp observations and console commands remain in `KatanaCombatEditor`.

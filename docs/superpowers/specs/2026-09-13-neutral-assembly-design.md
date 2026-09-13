@@ -34,11 +34,20 @@ before publication. Reject duplicate observers/components and invalid/retired in
 On any failure release this call's partial results and return no output. Existing
 per-observer and optional shared budgets continue to own every result reservation.
 
+Native replay serialization must round-trip finite double values, including clocks
+and transforms. Existing six-decimal `LexToString(double)` output was found to lose
+the shared acquisition identity. Correct the writer rather than rounding manifests
+or changing loaded records. Schema 1 remains compatible; new record byte hashes
+change. Qualify exact round trips and the existing canonical topology control.
+
 ## Native assembly
 
 Use two independent actors with ordinary unparented static cube components in the
-neutral host. The engine cube is 100 cm per side; use unit scale, no physics, no
-collision and integer transforms. Fixed center `(0,0,10000)`; moving center has X
+neutral host. Use `/Engine/EngineMeshes/Cube.Cube`: its 24 vertices have coordinates
+of exactly +/-128 cm and its 36 indices form 12 triangles. The explicit uniform
+scale `25/64` (`0.390625`) is exactly representable and produces 100 cm sides.
+Verify those source and transformed bounds. Use no physics or collision and integer
+translations. Fixed center `(0,0,10000)`; moving center has X
 positions `[140,110,100,80,140]` with matching Y/Z. Whole-mesh regions contain all
 12 triangles. These are fixture-owned actors; no consumer assets or scene edits.
 Sample IDs `step-00` through `step-04`. Expected distances `[40,10,0,0,40]` cm and
@@ -61,8 +70,9 @@ capture behavior. Keep batch boundary controls in this fixture/test translation 
 supplies `sample_id`, `fixed_bundle`, `moving_bundle`, `acquired_seconds`, `frame_id`,
 `fixed_revision`, `moving_revision`. Bundle names are `step-00-fixed` etc; each native
 request ID is its shared sample ID. Acquired clock is `unreal-monotonic` throughout.
-`controls` records native boundary assertions and peak reserved bytes with no claims
-about unknown renderer behavior. Publish the manifest after all five pairs are written.
+`controls` has exactly `checks_passed` (the accumulated native assertion outcome)
+and `peak_reserved_bytes` (nonnegative integer). Detailed boundary assertions stay
+in the native test log; no unknown renderer behavior is claimed. Publish the manifest after all five pairs are written.
 The file is at most 64 KiB. Retain native controls/logs if publication fails.
 
 ## Installed consumer example
@@ -81,6 +91,12 @@ The criteria explicitly bind units/convention, rigid/pose coverage, accepted
 exclusions, producer, record limits, analysis limits, maximum samples/gap, tolerance,
 and the five independent expected outcomes. Role configuration/pose/region identity
 comes from the run's explicit declarations, not silently from whatever record loads.
+This named fixture qualification accepts only the fixed semantic criteria profile
+listed in the plan and shipped criteria file. It must reject shortened sample lists
+or altered units, feature/producer policy, limits, gap, tolerance or outcomes instead
+of calling a weakened profile verified. JSON formatting and set ordering need not be
+identical. General consumer-specific criteria remain supported by the public APIs;
+this example is a reproducible qualification of its documented five-sample fixture.
 The report contains individual results, completion provenance, interval summary,
 input hashes, expected-versus-observed outcomes, read errors and labelled controls.
 Missing bundles/samples leave the run insufficient even if surviving samples meet
@@ -96,7 +112,11 @@ input records unchanged. The primary run uses only original native observations.
 
 Track `Python/examples/benchmark_mesh_analysis.py`, with no geometry optimization
 in this slice. Fixed counts 32, 128 and 512 triangles per side, one warmup and three
-rotated repetitions. Limits: 2048 triangle tests, 8192 node visits, 512 triangles
+repetitions with rotated execution order, not rotated geometry. The base order is
+case-major in the case order below, with counts ascending within each case. Run
+one warmup of that nine-case sequence; repetition `r` (0, 1, 2) rotates the sequence
+left by `3*r` entries. Retain warmup results separately from measured aggregates.
+Limits: 2048 triangle tests, 8192 node visits, 512 triangles
 per region, 256 coordinate bits. Time includes preparation, hashing, transforms,
 validation, tree construction and search; excludes fixture construction/export.
 
@@ -109,6 +129,13 @@ Cases use deterministic repeated triangles with independent exact expectations:
   Exact squared distance `1048576/1099511627777`.
 - Near parallel surfaces: copies of `(0,0,0),(2,0,0),(0,2,0)` translated by
   `1/1048576` in Z. Exact squared distance `1/1099511627776` and no intersection.
+
+Independent expectations: the first case's closest points are `(1,1,0)` and
+`(2,2,0)`. For the thin case, A's separating edge is `x/1024 + 1024*y = 1`;
+B's nearest vertex gives residual 1, so squared perpendicular distance is
+`1/(2^-20 + 2^20)`. Its projection lies inside A's edge and B's other points are
+farther into the same half-space. The parallel case has coincident XY projections,
+so the plane gap is attained. Repeating a triangle changes work, not these distances.
 
 Report all raw timings/status/counters and expected values; exhausted cases publish
 no minimum. Report medians/ranges per case and size separately for completed versus

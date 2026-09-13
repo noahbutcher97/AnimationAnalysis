@@ -70,6 +70,9 @@ and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its own
    for the selected regions, criteria and acquisition coverage. Containment remains
    explicitly not evaluated. Containment, support/sliding, penetration depth, volume
    and swept analysis require their own scoped definitions and controls.
+   The [neutral assembly example](NEUTRAL_ASSEMBLY.md) exercises a noncombat native
+   rigid capture-to-replay-to-analysis workflow; it does not replace live consumer
+   pose and deformation qualification.
 3. Move remaining generic paired evaluation/preview calculations and offline stream,
    report, launcher and retention mechanisms out of consumer implementations.
 4. Keep Katana finisher/counter integrations and a neutral host exercising the same APIs.

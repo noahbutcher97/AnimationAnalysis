@@ -23,7 +23,7 @@ policy. Run rendered checks when other editor/GPU workloads are idle.
 | Mode | Exact expected automation results |
 | --- | --- |
 | NullRHI | Seven `Portability` controls, including shared image/PNG budgets, plus `MeshReplay.PythonCanonicalTopology` (eight total) |
-| Rendered | All eight above, two `Surfaces`, two `Rendered` RGB decoders, six `Async`, `Host.InteractiveCommands`, and four mesh reference/cached-position/lifecycle controls (23 total) |
+| Rendered | All eight above, two `Surfaces`, two `Rendered` RGB decoders, six `Async`, `Host.InteractiveCommands`, and five mesh reference/cached-position/lifecycle/assembly controls (24 total) |
 
 Every expected test must complete exactly once with `Success`. Missing, duplicate,
 unexpected or failed results fail verification. A rendered run also needs an
@@ -47,6 +47,12 @@ not imply that other capabilities were verified. `--build-timeout` defaults to
 process tree and retains the command, deadline, elapsed time, exit/cleanup result
 and logs. If tree cleanup or replay retention cannot be confirmed, the temporary
 host is preserved for recovery and verification fails.
+
+`AnimationAnalysis.Capture.Mesh.RigidAssembly` exports five synchronized rigid pairs
+and an explicit assembly manifest for the [installed Python example](NEUTRAL_ASSEMBLY.md).
+It is included in default rendered verification and can be selected alone with
+`--test`. Its cube surface measurements do not qualify skeletal/deformation or
+raster coverage. The offline benchmark is a separate command in the example guide.
 
 The host compiles Skin Cache shader support in its own `Config/DefaultEngine.ini`;
 individual skeletal fixtures opt in. This configuration never enters the plugin
