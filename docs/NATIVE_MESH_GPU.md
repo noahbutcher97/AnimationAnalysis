@@ -10,7 +10,11 @@ deformer, material displacement and raster visibility remain excluded capabiliti
 
 Supply a live world, its viewport, one registered ordinary skeletal component,
 opaque enrollment identities, mesh limits, GPU limits and a shared budget. Create
-after registration and before the next ordinary single-node pose finalization.
+after registration and before the next qualifying pose finalization. Enrollment
+defaults to single-node. The explicit
+`Enrollment.PosePolicy = EAnimationMeshPosePolicy::FinalizedAnimation` option uses
+the [same finalized AnimBlueprint witnesses](NATIVE_MESH_REFERENCE.md#opt-into-finalized-animation)
+as CPU references, with the renderer checks below still required.
 The project must compile Skin Cache shaders and the component must actually use
 the cache. The producer changes no component, pose, LOD, CVar or renderer policy.
 There is no automatic CPU fallback. CPU bone and rigid references remain separate
@@ -56,8 +60,14 @@ the cached-geometry query and is timed separately from GPU completion latency.
 Pending weights, CPU rendering, active/external morphs, cloth mappings and deformer
 instances reject this backend. The CPU reference's pose/asset/attachment/streaming
 guards also apply. Resident CPU topology and effective weights remain required.
-No claim covers arbitrary animation graphs, leader pose, physics blending, Nanite,
+No claim covers linked instances, post-process/custom animation paths, leader pose, physics blending, Nanite,
 cloth, deformers, WPO/PDO, masked visibility or other RHIs.
+
+The producer remains single-component. Independent GPU requests and CPU/rigid
+captures retain independent acquisition stamps; `CaptureBatch` applies only to
+synchronous references. Matching frames or collecting results together does not
+establish a shared acquisition. Delayed collection preserves the acquired pose and
+geometry even when the live component has since changed.
 
 Pump queues at most one nonblocking render poll. Requests and polling never wait
 for GPU completion. Source RHI references and staging stay owned through copy

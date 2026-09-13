@@ -25,6 +25,14 @@ which additional acquisition capability is needed next.
 The [assembly delivery report](NEUTRAL_ASSEMBLY_DELIVERY.md) records tests, compatibility,
 offline costs, archived replay and remaining limits.
 
+The [finalized-pose delivery](FINALIZED_POSE_ACQUISITION_DELIVERY.md) follows Katana's
+retained integration findings. It adds explicit `FinalizedAnimation` enrollment and
+bounded synchronous `CaptureBatch` for qualified skeletal/rigid references, while
+preserving observer revisions and separate completion times. The report distinguishes
+current shared verification from the consumer owner's remaining rebuild, pin and live
+interval qualification. GPU group acquisition and unsupported material/raster coverage
+remain outside this delivery; historical independent timestamps are never retimed.
+
 ## Verified starting point
 
 Implementation baseline: `ba13149d3318f80d3098958cd1d2cd52bba3e5d1`.

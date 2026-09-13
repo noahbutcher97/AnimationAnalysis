@@ -7,6 +7,11 @@ retained development copies. It requires an explicit UE 5.6 engine location.
 No consuming project, gameplay module, project asset or local tool installation
 is discovered or copied.
 
+The host explicitly enables the engine's `PropertyAccessEditor` compiler plugin
+to construct its transient AnimBlueprint fixture. The fixture checks service
+registration before compilation. This is a host dependency; the capture module's
+production dependencies are unchanged.
+
 ## Isolated verification
 
 Run from the repository root and give each invocation a new evidence directory:
@@ -23,7 +28,7 @@ policy. Run rendered checks when other editor/GPU workloads are idle.
 | Mode | Exact expected automation results |
 | --- | --- |
 | NullRHI | Seven `Portability` controls, including shared image/PNG budgets, plus `MeshReplay.PythonCanonicalTopology` (eight total) |
-| Rendered | All eight above, two `Surfaces`, two `Rendered` RGB decoders, six `Async`, `Host.InteractiveCommands`, and five mesh reference/cached-position/lifecycle/assembly controls (24 total) |
+| Rendered | All eight above, two `Surfaces`, two `Rendered` RGB decoders, six `Async`, `Host.InteractiveCommands`, and six mesh reference/cached-position/lifecycle/assembly/finalized-pose controls (25 total) |
 
 Every expected test must complete exactly once with `Success`. Missing, duplicate,
 unexpected or failed results fail verification. A rendered run also needs an
@@ -53,6 +58,12 @@ and an explicit assembly manifest for the [installed Python example](NEUTRAL_ASS
 It is included in default rendered verification and can be selected alone with
 `--test`. Its cube surface measurements do not qualify skeletal/deformation or
 raster coverage. The offline benchmark is a separate command in the example guide.
+
+`AnimationAnalysis.Capture.Mesh.FinalizedPose` uses transient compiled AnimBlueprints
+and a slot/montage path to qualify explicit finalized-animation enrollment, mixed
+reference batches, stale/changed-state rejection and delayed GPU collection. It
+exports five small paired surfaces for installed replay qualification. These neutral
+controls do not replace a consumer's live interval or effective-coverage checks.
 
 The host compiles Skin Cache shader support in its own `Config/DefaultEngine.ini`;
 individual skeletal fixtures opt in. This configuration never enters the plugin

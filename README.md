@@ -39,6 +39,10 @@ The [neutral assembly example](docs/NEUTRAL_ASSEMBLY.md) connects synchronized r
 capture, explicit replay regions and sampled interval reports through those APIs.
 Its [delivery report](docs/NEUTRAL_ASSEMBLY_DELIVERY.md) records qualification,
 difficult-workload measurements and replay retention.
+The [finalized-pose follow-up](docs/FINALIZED_POSE_ACQUISITION_DELIVERY.md) addresses
+retained consumer blockers with explicit AnimBlueprint pose qualification and
+bounded synchronous skeletal/rigid batches. Independent acquisitions remain
+separate; GPU grouping and final material/raster coverage remain outside this slice.
 
 ## Verification
 

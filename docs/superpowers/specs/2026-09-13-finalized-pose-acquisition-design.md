@@ -26,6 +26,12 @@ class/instance, physics simulation/blending, reference override, custom animatio
 mode or linked instances qualify. These exclusions also apply to an attached rigid
 component's direct skeletal parent. Invalid policy values reject enrollment.
 
+The stronger instance/program/update/bone witnesses and additional rejection states
+below belong to the explicit FinalizedAnimation policy. SingleNode preserves its
+preexisting qualification, finalization and preparation behavior exactly, including
+its existing guards. A focused compatibility control must distinguish a formerly
+accepted default state from rejection under the stronger opt-in policy.
+
 Enroll before the next pose finalization. Capture remains observation only: never
 tick, refresh, drive montage/pose, switch modes, force LOD, wait for animation work,
 or alter render settings. Require a witnessed current frame/world-time finalization,
@@ -78,6 +84,39 @@ geometric expectations in that fixture's manifest, along with original frame,
 acquisition, per-component revision/configuration/topology and actual completions.
 Keep geometry small enough that successful offline pair checks are practical.
 Sample across distinct observed frames; report actual clock gaps without retiming.
+
+The fixed fixture uses component/subject IDs `animated-body` and `attached-part`,
+generation 1, stream `finalized-pose`. Pair IDs are `finalized-pair-00` through
+`finalized-pair-04`. A 20x20 cm two-triangle plane is fully weighted to a child bone
+with linear +X motion. EngineMeshes/Cube (24 vertices, 12 triangles, bounds +/-128)
+at scale `5/128` supplies a 10 cm rigid cube attached to a second graph-driven
+component's child bone. Both have the same nontrivial world transform and motion.
+Relative cube center-X values `[30,20,10,4,0]` imply distances `[25,15,5,0,0]` cm
+and intersection flags `[false,false,false,true,true]`. Montage positions
+`[0.1,0.2,0.3,0.4,0.5]` imply child X offsets `[1,2,3,4,5]` cm. Numeric expected
+geometry comparisons permit 0.001 cm absolute error; exact intersection is unchanged.
+
+Common world transform is `FTransform(FRotator(7,31,-4), FVector(310,-125,900),
+FVector::OneVector)`. Child `Motion` has identity bind under root `Base`; its
+translation is `(10*t,0,0)`. The attachment transform is relative translation
+`(offset_x,0,0)` and uniform scale `5/128`, composed with child translation and the
+common world transform. Its expected origin is `(310,-125,900)` plus
+`(offset_x+10*t) * (cos(7deg)*cos(31deg),cos(7deg)*sin(31deg),sin(7deg))`.
+The first pair must explicitly exercise different observer-local revisions through
+one additional same-pose body finalization while keeping geometry/acquisition valid.
+
+Manifest `finalized-pose-pairs.json` is at most64KiB, with top-level fields
+`format` (`neutral_finalized_pose_pairs`), `schema_version` (1), `roles`, `pairs`,
+`controls`. Role keys `body` and `attached_part` contain component_id,
+component_generation, subject_id and stream_id. Each pair contains pair_id,
+body_bundle, attached_part_bundle, frame_id, acquired_seconds, body, attached_part
+and expected. Each participant contains pose_revision, configuration_id,
+topology_id and completed_seconds. Expected contains animation_position_seconds,
+body_position_offset_cm, attached_part_world_origin_cm, minimum_distance_cm and
+surface_intersection. Controls contain checks_passed and peak_reserved_bytes.
+The named Python example must require this five-pair semantic profile, with maximum
+8 samples and maximum actual gap1.0s; these are neutral fixture settings, not
+consumer cadence recommendations. No custom mesh replay format is introduced.
 
 Required controls: default policy rejects the graph; opt-in enrollment works before
 finalization but capture does not; finalized geometry matches analytic motion;

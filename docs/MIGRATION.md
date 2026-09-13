@@ -64,6 +64,10 @@ and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its own
    unsupported coverage. Katana's effective live component inventory remains a
    prerequisite to consumer adequacy claims. Qualify additional pose acquisition
    only where it blocks a selected core workflow; broader deformation is deferred.
+   The [finalized-pose follow-up](FINALIZED_POSE_ACQUISITION_DELIVERY.md) addresses
+   reproduced live AnimBlueprint and separate-acquisition blockers with an explicit
+   pose policy and synchronous mixed reference batches. Consumer cadence, selected
+   regions and required material/raster effects still need consumer qualification.
 2. [Explicit regions, offline surface distance, sampled intersection and interval/gap
    reporting](MESH_ANALYSIS.md) are implemented in Python 0.4.0; see the
    [qualification results](MESH_ANALYSIS_DELIVERY.md). Obtain consumer-owned evidence

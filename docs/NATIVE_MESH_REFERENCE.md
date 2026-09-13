@@ -34,6 +34,28 @@ on the game thread. Failed enrollment/acquisition returns no geometry and a spec
 `Error`; callers retain their request ID and handle that unavailable result. This
 synchronous API does not create terminal failure bundles or an asynchronous queue.
 
+## Opt into finalized animation
+
+Enrollment defaults to `EAnimationMeshPosePolicy::SingleNode`. For an ordinary
+compiled AnimBlueprint/slot/montage path, set the policy before creating the sampler:
+
+```cpp
+Enrollment.PosePolicy = EAnimationMeshPosePolicy::FinalizedAnimation;
+```
+
+Register before the next finalization and sample after world tick completes. The
+observer requires a current finalization, stable animation instance/mode, no pending
+animation update or parallel/post evaluation, matching update/bone witnesses and
+evaluated analysis-LOD bones. It never finishes animation work for the caller.
+Stale or replaced state requires a new valid witness; instance/asset changes require
+reenrollment with new generations. Observer revisions are local to each enrollment.
+
+Leader poses, linked animation instances, post-process animation, physics blending,
+reference overrides and custom animation modes remain unavailable. A rigid attachment
+uses its direct skeletal parent's policy and finalization, plus evaluated socket
+and synchronized attachment-transform checks. All material/deformation exclusions
+remain unchanged. Rebuild native adapters to use the new enrollment field.
+
 ## Paired rigid acquisition
 
 Use `CaptureRigidBatch` when multiple independent rigid parts must describe one
@@ -53,8 +75,8 @@ The explicit maximum component count is 1..64 and must admit the supplied nonemp
 list. All participants must be different registered ordinary unparented static
 components in one world, outside world tick and without physics simulation. The
 operation observes existing state synchronously; it does not tick, drive poses,
-yield to caller code or combine unrelated acquisitions after the fact. Skeletal
-and attached-component batching require separate qualification.
+yield to caller code or combine unrelated acquisitions after the fact. Use the
+separate mixed-component API below for skeletal components and direct attachments.
 
 Every output receives the shared native acquisition stamp and frame at preparation,
 with its original component identity, observer revision and actual completion time.
@@ -64,9 +86,33 @@ native callers to use the new opt-in API; existing calls and replay schema stay
 compatible. The [neutral assembly example](NEUTRAL_ASSEMBLY.md) exercises this path
 through replay, region measurements and interval reporting.
 
+## Paired skeletal and attached references
+
+`CaptureBatch` has the same ordered, bounded interface and supports enrolled
+skeletal references plus direct rigid attachments under their selected pose policies:
+
+```cpp
+TArray<FAnimationCaptureMeshReference*> Samplers{Body.Get(), AttachedPart.Get()};
+TArray<TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>> Pair;
+const bool Captured = FAnimationCaptureMeshReference::CaptureBatch(
+    Samplers, TEXT("pair-01"), 2, Pair, Error);
+```
+
+All components must be distinct and share one stable world outside tick. The batch
+establishes acquisition before preparing snapshots, validates their witnesses before
+publication and preserves different observer revisions and actual completion times.
+Failure returns no partial output and releases this call's partial reservations.
+No export or consumer callback runs between preparations. The attachment's parent
+need not also be an output participant, but its finalization and transform must qualify.
+
+This synchronous CPU/rigid batch does not group independent GPU requests. Existing
+individual captures keep independent clocks. Never retime them, or pair them solely
+because engine frames match. See [qualification and consumer limits](FINALIZED_POSE_ACQUISITION_DELIVERY.md).
+
 ## Qualified capability and rejection
 
-- Ordinary `USkeletalMeshComponent`, single-node animation, fixed effective weights
+- Ordinary `USkeletalMeshComponent`, single-node animation by default or the explicit
+  finalized-animation policy described above, fixed effective weights
   with at most 12 influences, complete resident triangles and section/bone mappings.
   The current finalization must match engine frame and world time. Every weighted
   bone must belong to the evaluated `RequiredBones`; finer-than-predicted analysis
@@ -74,8 +120,8 @@ through replay, region measurements and interval reporting.
 - Ordinary `UStaticMeshComponent`, resident non-Nanite triangles, independently
   transformed or directly attached to a qualified skeletal component. A socket's
   bone must have evaluated-pose coverage and its attachment transform must match.
-- Specialized component subclasses, other parent chains, leader poses, animation
-  graphs, post-process animation, physics blending, reference-pose overrides,
+- Specialized component subclasses, other rigid parent chains, leader poses,
+  unqualified animation modes, post-process animation, physics blending, reference-pose overrides,
   unqualified absolute attachment transforms, compiling/streaming assets, missing
   data and stale poses return unavailable. Broader support requires qualification.
 
