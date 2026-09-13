@@ -51,8 +51,9 @@ private:
 	friend class FAnimationCaptureMeshGPU;
 };
 
-/** UE5.6 D3D11, one unscaled perspective view without AA; explicit single-node bone
- * subset. Captures Skin Cache positions before material effects. Does not CPU-skin,
+/** UE5.6 D3D11, one unscaled perspective view without AA; explicit enrolled bone
+ * subset using the enrollment's pose policy. Captures Skin Cache positions before
+ * material effects. Does not CPU-skin,
  * tick, force LOD, enable Skin Cache or silently fall back. Needs resident topology
  * and weights. All instance calls are game-thread only; immutable results may outlive
  * the component/world. Pump queues at most one nonblocking render poll. Collected

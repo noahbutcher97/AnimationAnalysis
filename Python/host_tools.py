@@ -35,6 +35,7 @@ SURFACE_TESTS = (
     "AnimationAnalysis.Capture.Surfaces.RenderedGeometry",
 )
 RENDERED_TESTS = SURFACE_TESTS + (
+    "AnimationAnalysis.Capture.Mesh.FinalizedPose",
     "AnimationAnalysis.Capture.Mesh.RigidAssembly",
     "AnimationAnalysis.Capture.Mesh.CachedPositions",
     "AnimationAnalysis.Capture.Mesh.GPULifecycle",

@@ -111,7 +111,12 @@ struct FAnimationMeshGPUState : TSharedFromThis<FAnimationMeshGPUState, ESPMode:
 			{
 				Feature.ProducerId = D.ProducerId;
 				if (Feature.Feature == TEXT("bone")) { Feature.Reason = TEXT("Renderer Skin Cache positions, matched pose and selected render LOD, before material effects"); }
-				if (Feature.Feature == TEXT("pose_ordering")) { Feature.Reason = TEXT("Current single-node finalization and matching renderer reference-to-local matrices in the acquired view"); }
+				if (Feature.Feature == TEXT("pose_ordering"))
+				{
+					Feature.Reason = D.Enrollment.PosePolicy == EAnimationMeshPosePolicy::FinalizedAnimation
+						? TEXT("Current finalized animation instance/update/bone witnesses and matching renderer reference-to-local matrices in the acquired view")
+						: TEXT("Current single-node finalization and matching renderer reference-to-local matrices in the acquired view");
+				}
 			}
 			S->MeshObject = Mesh->GetMeshObject();
 			Mesh->GetCurrentRefToLocalMatrices(S->Matrices, LOD); // O(bones); never computes CPU-skinned vertices.

@@ -57,6 +57,13 @@ struct ANIMATIONCAPTURE_API FAnimationMeshFeature
 	FString Reason;
 };
 
+/** Explicit pose-source enrollment. Existing callers default to the SingleNode policy. */
+enum class EAnimationMeshPosePolicy : uint8
+{
+	SingleNode,
+	FinalizedAnimation
+};
+
 /** Caller supplies portable identities, not paths inferred from a consuming project. */
 struct ANIMATIONCAPTURE_API FAnimationMeshEnrollment
 {
@@ -68,6 +75,7 @@ struct ANIMATIONCAPTURE_API FAnimationMeshEnrollment
 	FString SubjectId;
 	FString StreamId;
 	int32 AnalysisLOD = 0;
+	EAnimationMeshPosePolicy PosePolicy = EAnimationMeshPosePolicy::SingleNode;
 	/** One opaque identifier per material slot; empty entries mean unknown. */
 	TArray<FString> MaterialIds;
 };
@@ -111,8 +119,9 @@ private:
 };
 
 /** Synchronous game-thread observer. Create after component registration and before
- * its next pose finalization. Supports ordinary static mesh and finalized single-node
- * skeletal bone references only. No component/LOD/pose/rendering changes are made. */
+ * its next pose finalization. Supports ordinary static mesh and finalized skeletal
+ * bone references under the explicit enrollment policy (SingleNode by default).
+ * No component/LOD/pose/rendering changes are made. */
 class ANIMATIONCAPTURE_API FAnimationCaptureMeshReference
 {
 public:
@@ -122,6 +131,14 @@ public:
 	/** Capture a bounded ordered set of ordinary unparented static components during one
 	 * stable synchronous game-thread operation. Failure publishes no snapshots. */
 	static bool CaptureRigidBatch(
+		TConstArrayView<FAnimationCaptureMeshReference*> Samplers,
+		const FString& RequestId, int32 MaxComponents,
+		TArray<TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>>& OutSnapshots,
+		FString& Error);
+	/** Capture a bounded ordered set of distinct enrolled skeletal components, direct
+	 * rigid attachments and ordinary unparented rigid components in one synchronous
+	 * acquisition. Failure publishes no snapshots. */
+	static bool CaptureBatch(
 		TConstArrayView<FAnimationCaptureMeshReference*> Samplers,
 		const FString& RequestId, int32 MaxComponents,
 		TArray<TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>>& OutSnapshots,

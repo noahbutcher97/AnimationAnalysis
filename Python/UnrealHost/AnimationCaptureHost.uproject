@@ -5,5 +5,8 @@
     "Modules": [
         { "Name": "AnimationCaptureHost", "Type": "Editor", "LoadingPhase": "Default" }
     ],
-    "Plugins": [{ "Name": "AnimationAnalysis", "Enabled": true }]
+    "Plugins": [
+        { "Name": "AnimationAnalysis", "Enabled": true },
+        { "Name": "PropertyAccessEditor", "Enabled": true }
+    ]
 }

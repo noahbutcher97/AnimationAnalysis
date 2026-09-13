@@ -1,4 +1,5 @@
 #include "AnimationCapture/AnimationCaptureMeshReference.h"
+#include "Animation/AnimInstance.h"
 #include "Animation/AnimSingleNodeInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -23,17 +24,71 @@ bool LimitsValid(const FAnimationMeshLimits& L)
 		&& L.MaxIndices > 0 && L.MaxIndices <= MAX_int32 / 4 && L.MaxSections > 0
 		&& L.MaxSections <= 64 && L.MaxBones > 0 && L.MaxBones <= 65536 && L.MaxBytes > 0;
 }
-bool QualifiedPose(USkeletalMeshComponent* Mesh, FString& Error)
+struct FPoseQualification
 {
-	if (!Mesh || Mesh->GetClass() != USkeletalMeshComponent::StaticClass() || !Mesh->IsRegistered()
-		|| Mesh->LeaderPoseComponent.IsValid() || Mesh->GetAnimationMode() != EAnimationMode::AnimationSingleNode
-		|| !Mesh->GetSingleNodeInstance() || Mesh->GetPostProcessInstance()
-		|| Mesh->GetPostProcessAnimBPClassToBeUsed() || Mesh->IsRunningParallelEvaluation()
-		|| Mesh->IsSimulatingPhysics() || Mesh->bBlendPhysics || Mesh->GetRefPoseOverride().IsValid())
+	UAnimInstance* Instance = nullptr;
+	UObject* Program = nullptr;
+	EAnimationMode::Type Mode = EAnimationMode::AnimationCustomMode;
+	int16 UpdateCounter = INDEX_NONE;
+	uint32 BoneRevision = 0;
+};
+bool QualifiedPose(USkeletalMeshComponent* Mesh, EAnimationMeshPosePolicy Policy,
+	FPoseQualification& Out, FString& Error, bool bRequireReady, bool bAllowPostEvaluation = false)
+{
+	Out = {};
+	if (Policy != EAnimationMeshPosePolicy::SingleNode && Policy != EAnimationMeshPosePolicy::FinalizedAnimation)
 	{
-		Error = TEXT("unavailable: pose ordering requires finalized single-node animation without leader, post-process, physics blending or reference-pose override");
+		Error = TEXT("unavailable: invalid mesh pose policy");
 		return false;
 	}
+	if (!Mesh || Mesh->GetClass() != USkeletalMeshComponent::StaticClass() || !Mesh->IsRegistered()
+		|| Mesh->LeaderPoseComponent.IsValid() || Mesh->GetPostProcessInstance()
+		|| Mesh->GetPostProcessAnimBPClassToBeUsed() || Mesh->IsRunningParallelEvaluation()
+		|| (!bAllowPostEvaluation && Mesh->IsPostEvaluatingAnimation())
+		|| Mesh->IsSimulatingPhysics() || Mesh->bBlendPhysics || Mesh->bForceRefpose || Mesh->GetRefPoseOverride().IsValid()
+		|| !static_cast<const USkeletalMeshComponent*>(Mesh)->GetLinkedAnimInstances().IsEmpty())
+	{
+		Error = TEXT("unavailable: finalized pose requires an ordinary registered component without leader, post-process, linked instances, evaluation work, physics blending or reference-pose override");
+		return false;
+	}
+	Out.Mode = Mesh->GetAnimationMode();
+	if (Out.Mode == EAnimationMode::AnimationSingleNode)
+	{
+		Out.Instance = Mesh->GetSingleNodeInstance();
+		Out.Program = Out.Instance ? Cast<UAnimSingleNodeInstance>(Out.Instance)->GetAnimationAsset() : nullptr;
+	}
+	else if (Policy == EAnimationMeshPosePolicy::FinalizedAnimation
+		&& Out.Mode == EAnimationMode::AnimationBlueprint)
+	{
+		Out.Instance = Mesh->GetAnimInstance();
+		Out.Program = Mesh->GetAnimClass();
+	}
+	else
+	{
+		Error = TEXT("unavailable: pose policy does not admit the component animation mode");
+		return false;
+	}
+	if (!IsValid(Out.Instance) || !Out.Instance->IsInitialized()
+		|| Out.Instance->GetSkelMeshComponent() != Mesh || Out.Instance->IsRunningParallelEvaluation())
+	{
+		Error = TEXT("unavailable: corresponding initialized animation instance is absent or evaluating");
+		return false;
+	}
+	if (bRequireReady && Out.Instance->NeedsUpdate())
+	{
+		Error = TEXT("unavailable: animation instance has an outstanding update");
+		return false;
+	}
+	// GetUpdateCounter reaches the proxy and can block. The explicit component and
+	// instance parallel-evaluation guards above make this an observation-only read.
+	const FGraphTraversalCounter& Counter = Out.Instance->GetUpdateCounter();
+	if (bRequireReady && !Counter.HasEverBeenUpdated())
+	{
+		Error = TEXT("unavailable: animation instance has no completed update witness");
+		return false;
+	}
+	Out.UpdateCounter = Counter.Get();
+	Out.BoneRevision = Mesh->GetBoneTransformRevisionNumber();
 	return true;
 }
 void HashString(FMD5& Hash, const FString& S)
@@ -78,6 +133,8 @@ struct FAnimationCaptureMeshReference::FState
 	TWeakObjectPtr<UObject> Asset;
 	TWeakObjectPtr<USkeletalMeshComponent> PoseSource;
 	TWeakObjectPtr<UObject> PoseAsset;
+	TWeakObjectPtr<UAnimInstance> PoseInstance;
+	TWeakObjectPtr<UObject> PoseProgram;
 	TWeakObjectPtr<USceneComponent> Parent;
 	FName Socket;
 	TArray<TWeakObjectPtr<UMaterialInterface>> Materials;
@@ -85,6 +142,9 @@ struct FAnimationCaptureMeshReference::FState
 	FAnimationMeshEnrollment Enrollment;
 	FDelegateHandle Finalization;
 	uint64 Serial = 0, Frame = 0;
+	uint32 BoneRevision = 0;
+	int16 UpdateCounter = INDEX_NONE;
+	EAnimationMode::Type PoseMode = EAnimationMode::AnimationCustomMode;
 	double WorldTime = -1;
 };
 FAnimationCaptureMeshReference::FAnimationCaptureMeshReference() : State(MakeUnique<FState>()) {}
@@ -101,7 +161,8 @@ TUniquePtr<FAnimationCaptureMeshReference> FAnimationCaptureMeshReference::Creat
 	if (!LimitsValid(Budget->Limits()) || !Identity(E.ComponentId) || !Identity(E.AssetId) || !Identity(E.ConfigurationId, 128)
 		|| !Identity(E.SubjectId) || !Identity(E.StreamId) || E.ComponentGeneration < 0 || E.ComponentGeneration > MaxJsonInteger
 		|| E.ConfigurationGeneration < 0 || E.ConfigurationGeneration > MaxJsonInteger || E.AnalysisLOD < 0
-		|| E.MaterialIds.Num() > 64)
+		|| E.MaterialIds.Num() > 64 || (E.PosePolicy != EAnimationMeshPosePolicy::SingleNode
+			&& E.PosePolicy != EAnimationMeshPosePolicy::FinalizedAnimation))
 	{ Error = TEXT("unavailable: invalid explicit enrollment or limits"); return nullptr; }
 	for (const auto& Material : E.MaterialIds) if (Material.Len() > 256)
 	{ Error = TEXT("unavailable: material identity exceeds 256 characters"); return nullptr; }
@@ -114,7 +175,10 @@ TUniquePtr<FAnimationCaptureMeshReference> FAnimationCaptureMeshReference::Creat
 	if (!Asset || Component->GetNumMaterials() != E.MaterialIds.Num())
 	{ Error = TEXT("unavailable: asset and explicit material-slot identities are required"); return nullptr; }
 	USkeletalMeshComponent* Pose = Skeletal ? Skeletal : Cast<USkeletalMeshComponent>(Component->GetAttachParent());
-	if (Pose && !QualifiedPose(Pose, Error)) { return nullptr; }
+	FPoseQualification Qualification;
+	if (Pose && !QualifiedPose(Pose, E.PosePolicy, Qualification, Error, false)) { return nullptr; }
+	if (!Pose && E.PosePolicy != EAnimationMeshPosePolicy::SingleNode)
+	{ Error = TEXT("unavailable: finalized-animation policy requires a skeletal pose source"); return nullptr; }
 	// Only a direct ordinary skeletal attachment is qualified. Arbitrary parent chains
 	// may have later transform producers and need their own ordering evidence.
 	if (Static && Component->GetAttachParent() && !Pose)
@@ -123,13 +187,24 @@ TUniquePtr<FAnimationCaptureMeshReference> FAnimationCaptureMeshReference::Creat
 	auto& S = *Result->State;
 	S.Component = Component; S.Asset = Asset; S.PoseSource = Pose; S.Parent = Component->GetAttachParent();
 	S.PoseAsset = Pose ? Pose->GetSkeletalMeshAsset() : nullptr;
+	S.PoseInstance = Qualification.Instance; S.PoseProgram = Qualification.Program; S.PoseMode = Qualification.Mode;
 	S.Socket = Component->GetAttachSocketName(); S.Enrollment = E; S.Budget = Budget;
 	for (int32 I = 0; I < E.MaterialIds.Num(); ++I) { S.Materials.Add(Component->GetMaterial(I)); }
 	if (Pose)
 	{
 		S.Finalization = Pose->RegisterOnBoneTransformsFinalizedDelegate(FOnBoneTransformsFinalizedMultiCast::FDelegate::CreateLambda([State = &S]
 		{
+			USkeletalMeshComponent* Source = State->PoseSource.Get();
+			FPoseQualification Witness;
+			FString Ignored;
+			if (!Source || !QualifiedPose(Source, State->Enrollment.PosePolicy, Witness, Ignored, true, true)
+				|| Witness.Instance != State->PoseInstance.Get() || Witness.Program != State->PoseProgram.Get()
+				|| Witness.Mode != State->PoseMode)
+			{
+				return;
+			}
 			++State->Serial; State->Frame = GFrameCounter;
+			State->BoneRevision = Witness.BoneRevision; State->UpdateCounter = Witness.UpdateCounter;
 			const auto* C = State->Component.Get(); State->WorldTime = C && C->GetWorld() ? C->GetWorld()->GetTimeSeconds() : -1;
 		}));
 	}
@@ -232,6 +307,114 @@ bool FAnimationCaptureMeshReference::CaptureRigidBatch(
 	return true;
 }
 
+bool FAnimationCaptureMeshReference::CaptureBatch(
+	TConstArrayView<FAnimationCaptureMeshReference*> Samplers,
+	const FString& RequestId, int32 MaxComponents,
+	TArray<TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>>& OutSnapshots,
+	FString& Error)
+{
+	Error.Reset();
+	OutSnapshots.Reset();
+	auto Fail = [&Error](const TCHAR* Reason)
+	{
+		Error = Reason;
+		return false;
+	};
+	if (!IsInGameThread())
+	{
+		return Fail(TEXT("unavailable: component batch capture requires the game thread"));
+	}
+	if (!Identity(RequestId) || MaxComponents < 1 || MaxComponents > 64
+		|| Samplers.IsEmpty() || Samplers.Num() > MaxComponents)
+	{
+		return Fail(TEXT("unavailable: invalid component batch request or component bound"));
+	}
+
+	TSet<const FAnimationCaptureMeshReference*> UniqueSamplers;
+	TSet<UMeshComponent*> UniqueComponents;
+	UWorld* World = nullptr;
+	for (const FAnimationCaptureMeshReference* Sampler : Samplers)
+	{
+		if (!Sampler || UniqueSamplers.Contains(Sampler))
+		{
+			return Fail(TEXT("unavailable: component batch observers must be non-null and unique"));
+		}
+		UniqueSamplers.Add(Sampler);
+		UMeshComponent* Component = Sampler->State->Component.Get();
+		if (!Component || !Component->IsRegistered() || !Component->GetWorld() || Component->GetWorld()->bInTick
+			|| (Component->GetClass() != USkeletalMeshComponent::StaticClass()
+				&& Component->GetClass() != UStaticMeshComponent::StaticClass())
+			|| Component->IsSimulatingPhysics())
+		{
+			return Fail(TEXT("unavailable: component batch requires registered supported components outside world tick without physics"));
+		}
+		if (UniqueComponents.Contains(Component))
+		{
+			return Fail(TEXT("unavailable: component batch components must be unique"));
+		}
+		UniqueComponents.Add(Component);
+		if (!World) { World = Component->GetWorld(); }
+		else if (Component->GetWorld() != World)
+		{
+			return Fail(TEXT("unavailable: component batch components must share one world"));
+		}
+	}
+
+	const double AcquisitionWorldTime = World->GetTimeSeconds();
+	const double AcquiredSeconds = FPlatformTime::Seconds();
+	const uint64 AcquisitionFrame = GFrameCounter;
+	if (!FMath::IsFinite(AcquiredSeconds) || AcquisitionFrame > MaxJsonInteger)
+	{
+		return Fail(TEXT("unavailable: component batch acquisition identity is invalid"));
+	}
+	TArray<TSharedPtr<const FAnimationMeshSnapshot, ESPMode::ThreadSafe>> Prepared;
+	Prepared.Reserve(Samplers.Num());
+	for (FAnimationCaptureMeshReference* Sampler : Samplers)
+	{
+		auto Snapshot = Sampler->Prepare(RequestId, Error, true, AcquiredSeconds);
+		if (!Snapshot) { return false; }
+		Prepared.Add(MoveTemp(Snapshot));
+	}
+	if (GFrameCounter != AcquisitionFrame || !World || World->bInTick
+		|| World->GetTimeSeconds() != AcquisitionWorldTime)
+	{
+		return Fail(TEXT("unavailable: component batch world or frame changed before publication"));
+	}
+	for (int32 Index = 0; Index < Samplers.Num(); ++Index)
+	{
+		const FState& State = *Samplers[Index]->State;
+		UMeshComponent* Component = State.Component.Get();
+		const FAnimationMeshData& Data = Prepared[Index]->Data();
+		if (!Component || Component->GetWorld() != World || !Component->IsRegistered()
+			|| Component->IsSimulatingPhysics() || Component->GetAttachParent() != State.Parent.Get()
+			|| Component->GetAttachSocketName() != State.Socket || Data.FrameId != int64(AcquisitionFrame)
+			|| Data.AcquiredSeconds != AcquiredSeconds
+			|| !Data.ComponentToWorld.Equals(Component->GetComponentTransform().ToMatrixWithScale(), 0))
+		{
+			return Fail(TEXT("unavailable: component batch participant changed before publication"));
+		}
+		USkeletalMeshComponent* Pose = Cast<USkeletalMeshComponent>(Component);
+		if (!Pose) { Pose = Cast<USkeletalMeshComponent>(Component->GetAttachParent()); }
+		if (Pose)
+		{
+			FPoseQualification Qualification;
+			if (!QualifiedPose(Pose, State.Enrollment.PosePolicy, Qualification, Error, true)
+				|| Pose != State.PoseSource.Get() || Pose->GetSkeletalMeshAsset() != State.PoseAsset.Get()
+				|| Qualification.Instance != State.PoseInstance.Get() || Qualification.Program != State.PoseProgram.Get()
+				|| Qualification.Mode != State.PoseMode || State.Serial != uint64(Data.PoseRevision)
+				|| State.Frame != AcquisitionFrame || State.WorldTime != World->GetTimeSeconds()
+				|| State.BoneRevision != Qualification.BoneRevision
+				|| State.UpdateCounter != Qualification.UpdateCounter)
+			{
+				if (Error.IsEmpty()) { Error = TEXT("unavailable: component batch finalized-pose witness changed before publication"); }
+				return false;
+			}
+		}
+	}
+	OutSnapshots = MoveTemp(Prepared);
+	return true;
+}
+
 TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshReference::Prepare(
 	const FString& RequestId, FString& Error, bool bComputePositions, TOptional<double> NativeAcquiredSeconds)
 {
@@ -254,9 +437,13 @@ TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshRef
 	USkeletalMeshComponent* Pose = Skeletal ? Skeletal : Cast<USkeletalMeshComponent>(Component->GetAttachParent());
 	if (Pose)
 	{
-		if (!QualifiedPose(Pose, Error)) { return nullptr; }
+		FPoseQualification Qualification;
+		if (!QualifiedPose(Pose, E.PosePolicy, Qualification, Error, true)) { return nullptr; }
 		if (Pose != S.PoseSource.Get() || Pose->GetSkeletalMeshAsset() != S.PoseAsset.Get() || !S.Serial
-			|| S.Frame != GFrameCounter || S.WorldTime != Component->GetWorld()->GetTimeSeconds())
+			|| Qualification.Instance != S.PoseInstance.Get() || Qualification.Program != S.PoseProgram.Get()
+			|| Qualification.Mode != S.PoseMode || S.Frame != GFrameCounter
+			|| S.WorldTime != Component->GetWorld()->GetTimeSeconds()
+			|| S.BoneRevision != Qualification.BoneRevision || S.UpdateCounter != Qualification.UpdateCounter)
 		{ return Fail(TEXT("unavailable: no current finalized pose witness")); }
 		if (Static && (Component->IsUsingAbsoluteLocation() || Component->IsUsingAbsoluteRotation() || Component->IsUsingAbsoluteScale()
 			|| !(Component->GetRelativeTransform() * Pose->GetSocketTransform(S.Socket)).Equals(Component->GetComponentTransform(), 1.e-5)))
@@ -327,6 +514,12 @@ TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshRef
 		if (!FMath::IsFinite(D.ComponentToWorld.M[Row][Col])) { return Fail(TEXT("unavailable: nonfinite acquisition transform")); }
 	FMD5 ConfigHash; HashString(ConfigHash, E.ConfigurationId);
 	HashString(ConfigHash, FString::FromInt(E.AnalysisLOD));
+	// Preserve all existing default hashes; only the explicit opt-in contributes a
+	// new configuration discriminator.
+	if (E.PosePolicy == EAnimationMeshPosePolicy::FinalizedAnimation)
+	{
+		HashString(ConfigHash, TEXT("pose-policy:finalized-animation"));
+	}
 	D.Sections.Reserve(Sections); uint32 NextIndex = 0, NextVertex = 0;
 	for (int32 I = 0; I < Sections; ++I)
 	{
@@ -388,7 +581,10 @@ TSharedPtr<FAnimationMeshSnapshot, ESPMode::ThreadSafe> FAnimationCaptureMeshRef
 	auto Feature = [&](const TCHAR* Name, const TCHAR* StateName, const FString& Reason)
 	{ D.Coverage.Add({Name, StateName, D.ProducerId, RequestId, Reason}); };
 	Feature(Skeletal ? TEXT("bone") : TEXT("rigid"), TEXT("observed"), TEXT("Complete selected analysis LOD reference; not a render-LOD witness"));
-	Feature(TEXT("pose_ordering"), TEXT("observed"), Pose ? TEXT("Current single-node finalization; sampled outside world tick") : TEXT("Rigid transform copied on game thread outside world tick"));
+	const TCHAR* PoseReason = E.PosePolicy == EAnimationMeshPosePolicy::FinalizedAnimation
+		? TEXT("Current finalized animation instance, update counter and bone revision; sampled outside world tick")
+		: TEXT("Current single-node finalization; sampled outside world tick");
+	Feature(TEXT("pose_ordering"), TEXT("observed"), Pose ? PoseReason : TEXT("Rigid transform copied on game thread outside world tick"));
 	const int32 MorphCount = Skeletal ? Skeletal->MorphTargetWeights.Num() : 0;
 	int32 ActiveMorphs = 0; if (Skeletal) for (float W : Skeletal->MorphTargetWeights) if (W != 0) { ++ActiveMorphs; }
 	Feature(TEXT("morph"), TEXT("excluded"), FString::Printf(TEXT("Reference excludes morphs; effective weight entries=%d, nonzero=%d; not final morph coverage"), MorphCount, ActiveMorphs));
