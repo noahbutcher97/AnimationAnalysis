@@ -7,9 +7,14 @@ from .mesh_records import (FeatureCoverage, MeshCompletion, MeshEligibility, Mes
                            MeshRecordLimits, MeshRequest, MeshRequirement, MeshSection,
                            MeshTopology, assess_mesh_coverage)
 from .mesh_replay import read_mesh_observation, write_mesh_observation
+from .mesh_analysis import (MeshAnalysisLimits, MeshAnalysisStats, MeshInputIdentity,
+                            MeshPairResult, MeshPairSample, MeshRegion, MeshSelection,
+                            measure_mesh_pair)
 
 __all__ = ["ClockStamp", "PoseKey", "Projection", "require_same_pose", "project_point",
            "segment_gap", "load_evidence", "render_review", "validate_review",
            "FeatureCoverage", "MeshCompletion", "MeshEligibility", "MeshObservation",
            "MeshRecordLimits", "MeshRequest", "MeshRequirement", "MeshSection", "MeshTopology",
-           "assess_mesh_coverage", "read_mesh_observation", "write_mesh_observation"]
+           "assess_mesh_coverage", "read_mesh_observation", "write_mesh_observation",
+           "MeshAnalysisLimits", "MeshAnalysisStats", "MeshInputIdentity", "MeshPairResult",
+           "MeshPairSample", "MeshRegion", "MeshSelection", "measure_mesh_pair"]
