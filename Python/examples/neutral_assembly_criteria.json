@@ -1,0 +1,54 @@
+{
+  "format": "neutral_assembly_criteria",
+  "schema_version": 1,
+  "units": "centimetres",
+  "coordinate_system": "unreal-left-handed-z-up",
+  "vector_convention": "row",
+  "required_features": [
+    "rigid",
+    "pose_ordering"
+  ],
+  "known_features": [
+    "rigid",
+    "pose_ordering",
+    "morph",
+    "cloth",
+    "mesh_deformer",
+    "material_displacement",
+    "raster_visibility"
+  ],
+  "allowed_exclusions": [
+    "morph",
+    "cloth",
+    "mesh_deformer",
+    "material_displacement",
+    "raster_visibility"
+  ],
+  "allowed_producers": [
+    "unreal-rigid-reference-v1"
+  ],
+  "record_limits": {
+    "max_vertices": 64,
+    "max_indices": 128,
+    "max_sections": 4,
+    "max_payload_bytes": 8192,
+    "max_metadata_bytes": 65536,
+    "max_record_bytes": 73728
+  },
+  "analysis_limits": {
+    "max_triangles": 12,
+    "max_pair_tests": 256,
+    "max_node_visits": 1024,
+    "max_coordinate_bits": 256
+  },
+  "max_samples": 8,
+  "max_gap_seconds": 1.0,
+  "tolerance": 0.0,
+  "expected_samples": [
+    {"sample_id": "step-00", "distance": 40, "intersection": false},
+    {"sample_id": "step-01", "distance": 10, "intersection": false},
+    {"sample_id": "step-02", "distance": 0, "intersection": true},
+    {"sample_id": "step-03", "distance": 0, "intersection": true},
+    {"sample_id": "step-04", "distance": 40, "intersection": false}
+  ]
+}
