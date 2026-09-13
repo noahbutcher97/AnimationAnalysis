@@ -762,6 +762,15 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FMeshReferenceTest, "AnimationAnalysis.Capture.
 bool FMeshReferenceTest::RunTest(const FString&)
 {
 	if (!FApp::CanEverRender()) { AddError(TEXT("Mesh reference fixture requires rendered host initialization")); return false; }
+	const FAnimationMeshEnrollment LegacyAggregate{
+		TEXT("legacy-component"), 1, TEXT("legacy-asset"), 1, TEXT("legacy-configuration"),
+		TEXT("legacy-subject"), TEXT("legacy-stream"), 0,
+		TArray<FString>{TEXT("legacy-surface")}
+	};
+	TestEqual(TEXT("Legacy full aggregate preserves material identifiers"), LegacyAggregate.MaterialIds,
+		TArray<FString>{TEXT("legacy-surface")});
+	TestEqual(TEXT("Legacy full aggregate retains the default SingleNode pose policy"), LegacyAggregate.PosePolicy,
+		EAnimationMeshPosePolicy::SingleNode);
 	ADD_LATENT_AUTOMATION_COMMAND(FEditorLoadMap(TEXT("/Engine/Maps/Entry")));
 	ADD_LATENT_AUTOMATION_COMMAND(FWaitForShadersToFinishCompiling());
 	ADD_LATENT_AUTOMATION_COMMAND(FStartPIECommand(false));

@@ -75,9 +75,9 @@ struct ANIMATIONCAPTURE_API FAnimationMeshEnrollment
 	FString SubjectId;
 	FString StreamId;
 	int32 AnalysisLOD = 0;
-	EAnimationMeshPosePolicy PosePolicy = EAnimationMeshPosePolicy::SingleNode;
 	/** One opaque identifier per material slot; empty entries mean unknown. */
 	TArray<FString> MaterialIds;
+	EAnimationMeshPosePolicy PosePolicy = EAnimationMeshPosePolicy::SingleNode;
 };
 
 struct ANIMATIONCAPTURE_API FAnimationMeshData
