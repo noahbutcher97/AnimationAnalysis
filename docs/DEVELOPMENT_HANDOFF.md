@@ -70,8 +70,12 @@ acquisition only where it blocks the selected core workflow.
 
 Priority clarified 2026-09-13: morphs, cloth and material deformation are stretch
 goals after core functionality, offering optional higher fidelity and broader use.
-This supersedes earlier advice to schedule an early morph experiment. Keep their
-coverage explicitly unsupported or unknown where appropriate. No further broad
+The [deferral review](research/2026-09-13-deformation-deferral-review.md) makes this
+ordering conditional on the selected workflow's required surface and live pose
+support. An early experiment needs a concrete coverage or contract question;
+defer production extensions without deferring that assessment. Reassess at the
+first usable analysis slice with consumer evidence. Keep omitted coverage
+explicitly unsupported or unknown where appropriate. No further broad
 tool audit is needed. No engine patch or consumer dependency update is included
 in either native delivery.
 

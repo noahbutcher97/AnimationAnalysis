@@ -149,3 +149,6 @@ mesh analysis (regions, surface distance, sampled intersection, separate contain
 rules and interval reporting), supported by neutral and consumer integration evidence.
 Qualify additional pose acquisition only where it blocks that core workflow.
 Morphs, cloth and material deformation are stretch goals after core functionality.
+The subsequent [deferral review](research/2026-09-13-deformation-deferral-review.md)
+records when a required effect or acquisition limitation blocks a core use case,
+and when a targeted experiment should precede broader production support.

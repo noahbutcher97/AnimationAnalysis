@@ -26,6 +26,9 @@ deformation fidelity. Mesh acquisition enables region-based surface measurements
 sampled intersection, separately defined containment and interval reporting.
 Morphs, cloth and material deformation are stretch goals after those core workflows
 are usable and verified. Their absence must remain explicit in current results.
+The [deferral review](research/2026-09-13-deformation-deferral-review.md) qualifies
+that ordering: a required effect can block a selected workflow, and a targeted
+experiment may precede production support when it resolves a concrete contract risk.
 
 KatanaCombat is the accessible first consumer and a valuable reference project.
 Explore its actual assets, deformation features, workflows and analysis needs to
@@ -69,8 +72,10 @@ and [API compatibility](ASYNC_READBACK.md). Katana adoption remains with its own
    report, launcher and retention mechanisms out of consumer implementations.
 4. Keep Katana finisher/counter integrations and a neutral host exercising the same APIs.
 5. After core functionality, qualify opt-in morph, cloth and material-deformation
-   extensions for higher fidelity and broader use. These are stretch goals, not
-   prerequisites to the core analysis delivery.
+   extensions for higher fidelity and broader use. They are not prerequisites to
+   the initial analysis algorithms on supported geometry. Reassess at the first
+   usable analysis slice with consumer evidence; a required unsupported effect
+   blocks that workflow's adequacy claim.
 
 ## Whole-suite inventory carried from the consumer
 

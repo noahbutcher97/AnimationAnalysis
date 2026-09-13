@@ -18,6 +18,9 @@ The next priority is core mesh analysis: explicit regions, surface separation,
 sampled intersection and interval reporting, with separate containment rules.
 Morphs, cloth and material deformation are stretch goals after core functionality,
 providing optional higher fidelity and broader surface coverage.
+The [deferral review](docs/research/2026-09-13-deformation-deferral-review.md) records
+the conditions: effects required by a selected workflow remain correctness
+prerequisites, and consumer adequacy still needs qualification.
 
 Read the [delivery evidence](docs/RENDERED_READBACK_DELIVERY.md),
 [asynchronous API and compatibility](docs/ASYNC_READBACK.md), and

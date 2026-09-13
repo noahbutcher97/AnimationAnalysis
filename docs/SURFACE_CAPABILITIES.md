@@ -20,9 +20,12 @@ workflows; neutral fixtures and additional use cases establish broader capabilit
 
 Priority clarified 2026-09-13: finish core mesh analysis before extending deformation
 fidelity. Morphs, cloth and material deformation are stretch goals for optional
-higher fidelity and broader use after core functionality. This supersedes the
-earlier early-morph-experiment recommendation. The immediate analysis work is
-regions, surface distance, sampled intersection, separate containment rules and
+higher fidelity and broader use after core functionality. The
+[deferral review](research/2026-09-13-deformation-deferral-review.md) makes this
+conditional: required effects block a workflow's adequacy claim, and a small
+experiment may resolve a concrete coverage/contract risk before production support.
+Reassess at the first usable analysis slice with consumer evidence. The immediate
+analysis work is regions, surface distance, sampled intersection, separate containment rules and
 interval reporting using explicitly supported observations.
 
 Keep three outputs distinct: **deformed geometry**, **rendered visibility/appearance**,
@@ -107,8 +110,9 @@ Deliver **capability-aware rigid and skeletal mesh observations**, with replayab
 positions/topology and an explicitly qualified renderer path. Keep CPU bone skinning
 as an independent reference and opt-in geometry capability. Use cached GPU geometry
 for the initial renderer-deformed path, subject to qualification; do not rename it
-"final surface". Morph, cloth and material-deformation experiments and production
-support follow core functionality. Deformer graphs also remain separate extension
+"final surface". Morph, cloth and material-deformation production support normally
+follows core functionality; targeted feasibility or contract checks may come earlier
+under the deferral review's conditions. Deformer graphs remain separate extension
 work. Each extension needs positive controls before support is offered; the API
 must already represent missing coverage without silent degradation.
 
